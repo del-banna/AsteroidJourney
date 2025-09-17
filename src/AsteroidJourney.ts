@@ -64,6 +64,7 @@ import { Physics } from "./components/PhysicsComponent";
 import AssetRepo from "./Assets";
 import { drawControlGuide, drawPauseScreen } from "./Overlays";
 import { ControlBinder, registerDefaultBindings } from "./ControlBindings";
+import { HUD } from "./HUD";
 
 export async function start() {
     const maxVelocity = 2.5 * 2.99792458
@@ -94,16 +95,20 @@ export async function start() {
                     VIEWPORT_RESOLUTION_COMPONENT.data.resolution.y = nh;
                 }
         });
+    const PPM = 1024; // pixels per meter
+    const engine = new FluidEngine(Fluid.core(), PPM);
+    const worldContext: WorldContext = new WorldContext(engine, 1.024, 0.1, (wC, cI, cS) => generateChunk(wC, cI, cS, engine));
+    const clientContext: ClientContext = new ClientContext(engine, worldContext, renderer);
+    const controlBinder = new ControlBinder().registerDefaultListeners();
 
+    clientContext.setZoomLevel(20);
+    let viewportPosition = { x: -renderer.getWidth() / (2 * PPM), y: -renderer.getHeight() / (2 * PPM) }
     let renderDistance: number = 5;
 
     const CAMERA = {
         position: Position.createComponent({
-            position: {
-                x: 0,
-                y: 0,
-            },
-            rotation: 0
+            position: viewportPosition,
+            rotation: -Math.PI / 2
         }),
         target: TargetPosition.createComponent({
             position: Position.createComponent({ position: Vector2.zero(), rotation: 0 }).data
@@ -119,15 +124,23 @@ export async function start() {
         resolution: VIEWPORT_RESOLUTION_COMPONENT
     }
 
+    const MC_POS = Position.createComponent({
+        position: { x: 0, y: 0 },
+        rotation: -Math.PI / 2
+    });
+
+    const MC_VEL = Velocity.createComponent(
+        {
+            velocity: { x: 0, y: 0 },
+            angular: 0
+        });
+
+    CAMERA.target.data.position = MC_POS.data;
+
     const cameraEntityId = Fluid.createEntityWithComponents(
         ...Object.values(CAMERA),
     );
 
-    const engine = new FluidEngine(Fluid.core(), 1024);
-    const worldContext: WorldContext = new WorldContext(engine, 1.024, 0.1, (wC, cI, cS) => generateChunk(wC, cI, cS, engine));
-    const clientContext: ClientContext = new ClientContext(engine, worldContext, renderer);
-
-    clientContext.setZoomLevel(20);
 
     const MOVEMENT_CONTROL_COMPONENT = MovementControl.createComponent({
         accelerationInput: {
@@ -139,7 +152,6 @@ export async function start() {
 
     const FIRE_CONTROL_COMPONENT = FireControl.createComponent({ fireIntent: false });
 
-    const controlBinder = new ControlBinder().registerDefaultListeners();
 
     registerDefaultBindings(
         controlBinder,
@@ -147,6 +159,11 @@ export async function start() {
         clientContext,
         MOVEMENT_CONTROL_COMPONENT,
         FIRE_CONTROL_COMPONENT
+    );
+
+    const hud = HUD.createDefaultHUD(
+        MC_POS,
+        MC_VEL
     );
 
     const simulationPhase = new FluidSystemPhase(
@@ -178,6 +195,7 @@ export async function start() {
                 drawPauseScreen(renderContext, renderer);
                 drawControlGuide(controlBinder, renderContext, renderer);
             }
+            hud.render(renderer);
         }
     );
 
@@ -243,15 +261,6 @@ export async function start() {
         debugInfoDisplaySystem
     );
 
-
-    const MC_POS = Position.createComponent({
-        position: { x: 0, y: 0 },
-        rotation: -Math.PI / 2
-    });
-
-    CAMERA.target.data.position = MC_POS.data;
-
-
     // ProjectileTypes
     const artilleryShell: ProjectileType = {
         lifeTime: 5,
@@ -259,10 +268,6 @@ export async function start() {
         density: 1.8,
         spriteImageKey: "artilleryShellImage"
     }
-
-
-
-
 
 
     function initMainCharacter(): ECSEntityId {
@@ -275,11 +280,7 @@ export async function start() {
         const mass = 3e9 * modelScaleFactor;
         return Fluid.createEntityWithComponents(
             MC_POS,
-            Velocity.createComponent(
-                {
-                    velocity: { x: 0, y: 0 },
-                    angular: 0
-                }),
+            MC_VEL,
             Acceleration.createComponent(
                 {
                     acceleration: { x: 0, y: 0 },

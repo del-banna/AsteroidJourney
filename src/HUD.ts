@@ -1,0 +1,116 @@
+import { ECSComponent, Vec2 } from "fluidengine";
+import { CanvasRenderer } from "./client/renderer/Renderer";
+import { PositionComponent } from "./components/PositionComponent";
+import { VelocityComponent } from "./components/VelocityComponent";
+
+abstract class HUDItem {
+    /**
+     * 
+     * @param normalizedScreenPosition A pair of values, each between -1 and 1, indicating the position on the screen relative to the center along either axis respectively.
+     */
+    constructor(
+        private normalizedScreenPosition: Vec2 = { x: 0, y: 0 }
+    ) {
+        this.setNormalizedScreenPosition(normalizedScreenPosition);
+    }
+
+    private static clipNormalizedScreenPosition(normalizedScreenPosition: Vec2): Vec2 {
+        return {
+            x: Math.max(-1, Math.min(1, normalizedScreenPosition.x)),
+            y: Math.max(-1, Math.min(1, normalizedScreenPosition.y))
+        };
+    }
+
+    public setNormalizedScreenPosition(normalizedScreenPosition: Vec2) {
+        this.normalizedScreenPosition = HUDTextItem.clipNormalizedScreenPosition(normalizedScreenPosition);
+    }
+
+    public getNormalizedScreenPosition(): Vec2 {
+        return this.normalizedScreenPosition;
+    }
+
+    public getScreenPosition(renderer: CanvasRenderer): Vec2 {
+        const width = renderer.getWidth();
+        const height = renderer.getHeight();
+        return {
+            x: (this.normalizedScreenPosition.x + 1) * width / 2,
+            y: (this.normalizedScreenPosition.y + 1) * height / 2
+        };
+    }
+
+    abstract render(renderer: CanvasRenderer): void;
+}
+
+class HUDTextItem extends HUDItem {
+    /**
+     * 
+     * @param normalizedScreenPosition A pair of values, each between -1 and 1, indicating the position on the screen relative to the center along either axis respectively.
+     * @param resolveValue 
+     * @param font 
+     * @param color 
+     */
+    constructor(
+        normalizedScreenPosition: Vec2 = { x: 0, y: 0 },
+        private resolveValue: () => string | number | boolean | null | undefined | object | symbol | bigint | void = () => "",
+        private font: string = "20px DigitalFont",
+        private color: string = "#22f51b",
+        private textAlign: CanvasTextAlign = "left",
+        private textBaseline: CanvasTextBaseline = "middle"
+    ) {
+        super(normalizedScreenPosition);
+    }
+
+    render(renderer: CanvasRenderer): void {
+        const ctx = renderer.renderContext;
+        const text = String(this.resolveValue());
+        const position = this.getScreenPosition(renderer);
+
+        ctx.save();
+        ctx.font = this.font;
+        ctx.fillStyle = this.color;
+        ctx.textAlign = this.textAlign;
+        ctx.textBaseline = this.textBaseline;
+        ctx.fillText(text, position.x, position.y);
+
+        ctx.restore();
+    }
+}
+
+export class HUD {
+    public static createDefaultHUD(
+        positionComponent: ECSComponent<PositionComponent>,
+        velocityComponent: ECSComponent<VelocityComponent>
+    ): HUD {
+        return new HUD([
+            new HUDTextItem(
+                { x: -0.98, y: 0.95 },
+                () => `${positionComponent.data.rotation.toFixed(2)} RAD`
+            ),
+            new HUDTextItem(
+                { x: -0.98, y: 0.88 },
+                () => `${Math.hypot(...Object.values(velocityComponent.data.velocity)).toFixed(2)} M/S`
+            )
+        ]);
+    }
+
+    constructor(
+        private items: HUDItem[] = []
+    ) { }
+
+    public addItem(item: HUDItem): void {
+        this.items.push(item);
+    }
+
+    public removeItem(item: HUDItem): void {
+        const index = this.items.indexOf(item);
+        if (index !== -1) {
+            this.items.splice(index, 1);
+        }
+    }
+
+    public render(renderer: CanvasRenderer): void {
+        for (const item of this.items) {
+            item.render(renderer);
+        }
+    }
+}
