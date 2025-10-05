@@ -3,7 +3,7 @@ import { CanvasRenderer } from "./client/renderer/Renderer";
 import { PositionComponent } from "./components/PositionComponent";
 import { VelocityComponent } from "./components/VelocityComponent";
 
-abstract class HUDItem {
+export abstract class HUDItem {
     /**
      * 
      * @param normalizedScreenPosition A pair of values, each between -1 and 1, indicating the position on the screen relative to the center along either axis respectively.
@@ -41,7 +41,25 @@ abstract class HUDItem {
     abstract render(renderer: CanvasRenderer): void;
 }
 
-class HUDTextItem extends HUDItem {
+export interface HUDTextItemOptions {
+    font?: string;
+    color?: string;
+    textAlign?: CanvasTextAlign;
+    textBaseline?: CanvasTextBaseline;
+    opacity?: number;
+    renderCallback?: (renderer: CanvasRenderer, hudTextItem: HUDTextItem) => void;
+}
+
+export const defaultHUDTextItemOptions: HUDTextItemOptions = {
+    font: "28px DigitalFont",
+    color: "#288bed",
+    textAlign: "left",
+    textBaseline: "middle",
+    opacity: 0.75
+};
+
+export class HUDTextItem extends HUDItem {
+
     /**
      * 
      * @param normalizedScreenPosition A pair of values, each between -1 and 1, indicating the position on the screen relative to the center along either axis respectively.
@@ -52,12 +70,10 @@ class HUDTextItem extends HUDItem {
     constructor(
         normalizedScreenPosition: Vec2 = { x: 0, y: 0 },
         private resolveValue: () => string | number | boolean | null | undefined | object | symbol | bigint | void = () => "",
-        private font: string = "20px DigitalFont",
-        private color: string = "#22f51b",
-        private textAlign: CanvasTextAlign = "left",
-        private textBaseline: CanvasTextBaseline = "middle"
+        private options: HUDTextItemOptions = defaultHUDTextItemOptions
     ) {
         super(normalizedScreenPosition);
+        this.options = { ...defaultHUDTextItemOptions, ...options };
     }
 
     render(renderer: CanvasRenderer): void {
@@ -65,12 +81,28 @@ class HUDTextItem extends HUDItem {
         const text = String(this.resolveValue());
         const position = this.getScreenPosition(renderer);
 
+        const { font, color, textAlign, textBaseline, opacity } = this.options;
+
         ctx.save();
-        ctx.font = this.font;
-        ctx.fillStyle = this.color;
-        ctx.textAlign = this.textAlign;
-        ctx.textBaseline = this.textBaseline;
+        if (font)
+            ctx.font = font;
+        if (color)
+            ctx.fillStyle = color;
+        if (opacity !== undefined)
+            ctx.globalAlpha = opacity;
+        if (textAlign)
+            ctx.textAlign = textAlign;
+        if (textBaseline)
+            ctx.textBaseline = textBaseline;
+
+        if (this.options.renderCallback) {
+            this.options.renderCallback(renderer, this);
+        }
+
         ctx.fillText(text, position.x, position.y);
+
+        ctx.fillStyle = "red";
+        ctx.fillText(".", position.x, position.y);
 
         ctx.restore();
     }
@@ -83,12 +115,14 @@ export class HUD {
     ): HUD {
         return new HUD([
             new HUDTextItem(
-                { x: -0.98, y: 0.95 },
-                () => `${positionComponent.data.rotation.toFixed(2)} RAD`
+                { x: 0.98, y: 0.95 },
+                () => `${positionComponent.data.rotation.toFixed(2)} RAD`,
+                { textAlign: "right" }
             ),
             new HUDTextItem(
-                { x: -0.98, y: 0.88 },
-                () => `${Math.hypot(...Object.values(velocityComponent.data.velocity)).toFixed(2)} M/S`
+                { x: 0.98, y: 0.88 },
+                () => `${Math.hypot(...Object.values(velocityComponent.data.velocity)).toFixed(2)} M/S`,
+                { textAlign: "right" }
             )
         ]);
     }
