@@ -198,16 +198,16 @@ export async function start() {
         "Hud Render Phase",
         () => { },
         () => {
+            hud.render(renderer);
             if (!engine.getAnimationState()) {
                 drawPauseScreen(renderContext, renderer);
                 drawControlGuide(controlBinder, renderContext, renderer);
             }
-            hud.render(renderer);
         }
     );
 
-    const sysman = Fluid.core().getSystemOrchestrator();
-    sysman.pushPhases(simulationPhase, worldRenderPhase, hudRenderPhase);
+    const systemOrchestrator = Fluid.core().getSystemOrchestrator();
+    systemOrchestrator.pushPhases(simulationPhase, worldRenderPhase, hudRenderPhase);
 
     let kinematicSystem = new KinematicSystem(clientContext),
         positionSystem = new PositionSystem(engine),
