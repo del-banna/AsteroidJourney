@@ -1576,9 +1576,9 @@
           this.getComponent = getComponent;
         }
         createNode(schemaMeta, entityId) {
-          const schemaId = schemaMeta.id, schema24 = schemaMeta.schema;
+          const schemaId = schemaMeta.id, schema25 = schemaMeta.schema;
           const node = { entityId };
-          for (const [key, componentType] of Object.entries(schema24)) {
+          for (const [key, componentType] of Object.entries(schema25)) {
             const component = this.getComponent(componentType, entityId);
             if (!component) {
               throw new Error(`Failed to create node from schema '${schemaId.getName()}': could not find component of type '${componentType.getId().getName()}' associated with entity id '${entityId.toString()}'`);
@@ -1834,10 +1834,10 @@
         }
         getLazyResolvedMetaIterable(schemaSymbolSet) {
           return getLazyMappedIterable(schemaSymbolSet ?? _FluidNodeSchemaIndex.EMPTY_SET, (symbol) => {
-            const schema24 = this.getSchemaBySymbol(symbol);
-            if (!schema24)
+            const schema25 = this.getSchemaBySymbol(symbol);
+            if (!schema25)
               throw new Error(`Schema not found for symbol: ${String(symbol)}`);
-            return schema24;
+            return schema25;
           });
         }
         getSchemasWithComponentType(componentType) {
@@ -1883,9 +1883,9 @@
             throw new Error(`Could not find schema '${schemaId.getName()}'`);
           return meta3;
         }
-        addSchema(schema24, name) {
+        addSchema(schema25, name) {
           const id = new FluidNodeSchemaId(name);
-          const meta3 = { id, schema: schema24 };
+          const meta3 = { id, schema: schema25 };
           this.schemaMap.set(id.getSymbol(), meta3);
           this.hooks.invokeHooks((h) => h.onRegisterNodeSchema(meta3));
           return meta3;
@@ -2151,8 +2151,8 @@ ${error}`);
           this.archetypeRegistry = archetypeRegistry;
           this.schemaArchetypeHooks = schemaArchetypeHooks;
         }
-        computeArchetypeBitSet(schema24) {
-          return FluidArchetype.computeArchetypeBitSet(Object.values(schema24));
+        computeArchetypeBitSet(schema25) {
+          return FluidArchetype.computeArchetypeBitSet(Object.values(schema25));
         }
         /**
          * Retrieves archetype of schema if cached; otherwise, computes and interns the archetype in the archetype registry and then caches it locally.
@@ -2513,12 +2513,12 @@ ${error}`);
     }
   });
 
-  // src/components/ProjectileSourceComponent.ts
-  var ProjectileSource;
-  var init_ProjectileSourceComponent = __esm({
-    "src/components/ProjectileSourceComponent.ts"() {
+  // src/components/ProjectileWeaponComponent.ts
+  var ProjectileWeapon;
+  var init_ProjectileWeaponComponent = __esm({
+    "src/components/ProjectileWeaponComponent.ts"() {
       init_dist();
-      ProjectileSource = fluidInternal.defineComponentType("Projectile Source");
+      ProjectileWeapon = fluidInternal.defineComponentType("Projectile Source");
     }
   });
 
@@ -2538,13 +2538,13 @@ ${error}`);
       init_internal();
       init_FireControlComponent();
       init_PositionComponent();
-      init_ProjectileSourceComponent();
+      init_ProjectileWeaponComponent();
       init_VelocityComponent();
       init_dist();
       schema2 = {
         position: Position,
         velocity: Velocity,
-        projectileSource: ProjectileSource,
+        projectileWeapon: ProjectileWeapon,
         fireControl: FireControl
       };
       nodeMeta2 = fluidInternal.registerNodeSchema(schema2, "Firing");
@@ -2558,7 +2558,7 @@ ${error}`);
           const GAME_TIME = this.engineInstance.getGameTime();
           const {
             fireControl,
-            projectileSource,
+            projectileWeapon,
             position: sourcePositionComponent,
             velocity: sourceVelocityComponent
           } = node;
@@ -2576,10 +2576,10 @@ ${error}`);
             projectileType,
             fireRate,
             transform: sourceTransform
-          } = projectileSource;
+          } = projectileWeapon;
           if (!fireControl.fireIntent)
             return;
-          if (GAME_TIME - projectileSource.lastFireTime < 1 / fireRate)
+          if (GAME_TIME - projectileWeapon.lastFireTime < 1 / fireRate)
             return;
           let projectileRotation = sourceRotation;
           if (sourceTransform?.rotate !== void 0)
@@ -2608,7 +2608,7 @@ ${error}`);
             x: sourceVelocity.x + tangentialVelocityX + projectileDirectionX * muzzleSpeed,
             y: sourceVelocity.y + tangentialVelocityY + projectileDirectionY * muzzleSpeed
           };
-          const spID = this.spawnProjectile({
+          const projectileCreationParams = {
             position: projectilePosition,
             velocity: projectileVelocity,
             rotation: sourceRotation,
@@ -2617,10 +2617,13 @@ ${error}`);
             width: projectileWidth,
             spawnTime: GAME_TIME,
             generation: 1
-          });
+          };
+          if (!!projectileWeapon.wielder)
+            projectileCreationParams.source = projectileWeapon.wielder;
+          const spID = this.spawnProjectile(projectileCreationParams);
           if (!spID)
             console.warn("Failed to spawn projectile!");
-          projectileSource.lastFireTime = GAME_TIME;
+          projectileWeapon.lastFireTime = GAME_TIME;
         }
       };
     }
@@ -3976,8 +3979,70 @@ ${error}`);
     }
   });
 
+  // src/components/AsteroidComponent.ts
+  var Asteroid;
+  var init_AsteroidComponent = __esm({
+    "src/components/AsteroidComponent.ts"() {
+      init_dist();
+      Asteroid = fluidInternal.defineComponentType("Asteroid");
+    }
+  });
+
+  // src/components/DeathByProjectileComponent.ts
+  var DeathByProjectile;
+  var init_DeathByProjectileComponent = __esm({
+    "src/components/DeathByProjectileComponent.ts"() {
+      init_dist();
+      DeathByProjectile = fluidInternal.defineComponentType("DeathByProjectile");
+    }
+  });
+
+  // src/components/AsteroidScoreComponent.ts
+  var AsteroidScore;
+  var init_AsteroidScoreComponent = __esm({
+    "src/components/AsteroidScoreComponent.ts"() {
+      init_dist();
+      AsteroidScore = fluidInternal.defineComponentType("AsteroidScore");
+    }
+  });
+
+  // src/systems/simulation/AsteroidKillScoreSystem.ts
+  var schema18, nodeMeta19, AsteroidKillScoreSystem;
+  var init_AsteroidKillScoreSystem = __esm({
+    "src/systems/simulation/AsteroidKillScoreSystem.ts"() {
+      init_dist();
+      init_internal();
+      init_AsteroidComponent();
+      init_DeathByProjectileComponent();
+      init_AsteroidScoreComponent();
+      schema18 = {
+        asteroid: Asteroid,
+        deathByProjectile: DeathByProjectile
+      };
+      nodeMeta19 = fluidInternal.registerNodeSchema(schema18, "AsteroidDeathByProjectile");
+      AsteroidKillScoreSystem = class extends FluidSystem {
+        constructor() {
+          super("Asteroid Kill Score System", nodeMeta19);
+        }
+        calculateScore(asteroidData) {
+          return Math.sqrt(asteroidData.area) * Math.SQRT2 * 10;
+        }
+        updateNode(node) {
+          const {
+            asteroid,
+            deathByProjectile
+          } = node;
+          const projectileData = deathByProjectile.projectileData;
+          if (!projectileData.source || !fluidInternal.entityHasComponent(projectileData.source, AsteroidScore))
+            return;
+          fluidInternal.getEntityComponent(projectileData.source, AsteroidScore).data.score += this.calculateScore(asteroid);
+        }
+      };
+    }
+  });
+
   // src/systems/render/debug/OccupiedChunkHighlightingSystem.ts
-  var schema18, nodeMeta19, generalHighlightColor, renderCenterHighlightColor, generalHighlightAlpha, renderCenterHighlightAlpha, OccupiedChunkHighlightingSystem;
+  var schema19, nodeMeta20, generalHighlightColor, renderCenterHighlightColor, generalHighlightAlpha, renderCenterHighlightAlpha, OccupiedChunkHighlightingSystem;
   var init_OccupiedChunkHighlightingSystem = __esm({
     "src/systems/render/debug/OccupiedChunkHighlightingSystem.ts"() {
       init_dist();
@@ -3985,17 +4050,17 @@ ${error}`);
       init_dist();
       init_ChunkOccupancyComponent();
       init_RenderCenterComponent();
-      schema18 = {
+      schema19 = {
         chunks: ChunkOccupancy
       };
-      nodeMeta19 = fluidInternal.registerNodeSchema(schema18, "Occupied Chunk Highlighting");
+      nodeMeta20 = fluidInternal.registerNodeSchema(schema19, "Occupied Chunk Highlighting");
       generalHighlightColor = "blue";
       renderCenterHighlightColor = "red";
       generalHighlightAlpha = 0.05;
       renderCenterHighlightAlpha = 0.35;
       OccupiedChunkHighlightingSystem = class extends FluidSystem {
         constructor(clientContext) {
-          super("Occupied Chunk Highlighting System", nodeMeta19);
+          super("Occupied Chunk Highlighting System", nodeMeta20);
           this.clientContext = clientContext;
         }
         updateNode(node) {
@@ -4120,15 +4185,6 @@ ${error}`);
     }
   });
 
-  // src/components/AsteroidComponent.ts
-  var Asteroid;
-  var init_AsteroidComponent = __esm({
-    "src/components/AsteroidComponent.ts"() {
-      init_dist();
-      Asteroid = fluidInternal.defineComponentType("Asteroid");
-    }
-  });
-
   // src/components/HealthComponent.ts
   var Health;
   var init_HealthComponent = __esm({
@@ -4248,7 +4304,7 @@ ${error}`);
     const shipImage = await loadImg("ship/ship1.png");
     const laserShotCanvas = renderSingleNeonLaserSprite();
     const laserShotImage = ImageUtils_exports.canvasToImage(laserShotCanvas);
-    const artilleryShellImage = await loadImg("projectile/shell2.png");
+    const artilleryShellImage = await loadImg("projectile/shell3.png");
     return {
       backgroundTileImage,
       asteroidImage,
@@ -4361,21 +4417,17 @@ ${error}`);
     return entity;
   }
   function createAsteroidParticle(position, velocity, rotation, angularVelocity, spawnTime, lifeTime, size) {
-    const entityId = createSpriteEntity(
-      position,
-      rotation,
-      "asteroidImage",
-      3,
-      { x: size, y: size }
+    const particleId = createAsteroid(
+      { position, rotation, velocity, angularVelocity, width: size }
     );
     fluidInternal.addEntityComponents(
-      entityId,
-      Velocity.createComponent({ velocity, angular: angularVelocity }),
-      LifeTime.createComponent({ lifeDuration: lifeTime, spawnTime }),
+      particleId,
       Particle.createComponent({})
     );
-    return entityId;
+    Velocity.createComponent({ velocity, angular: angularVelocity }), LifeTime.createComponent({ lifeDuration: lifeTime, spawnTime }), Particle.createComponent({});
+    return particleId;
   }
+  var DEFAULT_ASTEROID_CREATION_OPTIONS;
   var init_Asteroids = __esm({
     "src/Asteroids.ts"() {
       init_dist();
@@ -4394,6 +4446,13 @@ ${error}`);
       init_ParticleComponent();
       init_Assets();
       init_Sprites();
+      DEFAULT_ASTEROID_CREATION_OPTIONS = {
+        spriteImageKey: "asteroidImage",
+        density: 3.2,
+        deriveHealth: (mass, area) => mass * area,
+        damageAnimationScalePercent: 1.11,
+        damageAnimationDuration: 0.15
+      };
     }
   });
 
@@ -4537,7 +4596,7 @@ ${error}`);
     }
     return result;
   }
-  var schema19, meta2, width, height, hw, hh, outlineThickness, owidth, oheight, ohw, ohh, yDist, bkg, highColorRGB, lowColorRGB, healthColorGradient, gradientSteps, hPI3, HealthBarRenderSystem;
+  var schema20, meta2, width, height, hw, hh, outlineThickness, owidth, oheight, ohw, ohh, yDist, bkg, highColorRGB, lowColorRGB, healthColorGradient, gradientSteps, hPI3, HealthBarRenderSystem;
   var init_HealthBarRenderSystem = __esm({
     "src/systems/render/HealthBarRenderSystem.ts"() {
       init_dist();
@@ -4545,11 +4604,11 @@ ${error}`);
       init_HealthComponent();
       init_PositionComponent();
       init_dist();
-      schema19 = {
+      schema20 = {
         position: Position,
         health: Health
       };
-      meta2 = fluidInternal.registerNodeSchema(schema19, "Health Render");
+      meta2 = fluidInternal.registerNodeSchema(schema20, "Health Render");
       width = 0.2;
       height = 0.01;
       hw = width / 2;
@@ -4608,7 +4667,25 @@ ${error}`);
   });
 
   // src/systems/simulation/AsteroidDeathSystem.ts
-  var schema20, nodeMeta20, explosionIntensityScale, AsteroidDeathSystem;
+  function generateRandomUnitVector(componentCount, min = 0) {
+    let sumOfSquares = 0;
+    const vector = Array.from({ length: componentCount }, () => {
+      const random = min + (1 - min) * Math.random();
+      sumOfSquares += random ** 2;
+      return random;
+    });
+    const magnitude = Math.sqrt(sumOfSquares);
+    if (magnitude === 0) {
+      return new Array(componentCount).fill(0);
+    }
+    return vector.map((component) => component / magnitude);
+  }
+  function getSumRandomDistributionVector(sum, componentCount, minRandom = 0) {
+    const magnitude = Math.sqrt(sum);
+    const randomUnitVector = generateRandomUnitVector(componentCount, minRandom);
+    return randomUnitVector.map((component) => (component * magnitude) ** 2);
+  }
+  var EXPLOSION_UNIT_FORCE, ASTEROID_AREA_EXPLOSION_FORCE_RATIO, EXPLOSION_FORCE_VARIANCE, MIN_FRAGMENT_AREA, ASTEROID_DENSITY, schema21, nodeMeta21, AsteroidDeathSystem;
   var init_AsteroidDeathSystem = __esm({
     "src/systems/simulation/AsteroidDeathSystem.ts"() {
       init_dist();
@@ -4619,18 +4696,51 @@ ${error}`);
       init_PositionComponent();
       init_VelocityComponent();
       init_Asteroids();
-      schema20 = {
+      EXPLOSION_UNIT_FORCE = 0.08;
+      ASTEROID_AREA_EXPLOSION_FORCE_RATIO = 10;
+      EXPLOSION_FORCE_VARIANCE = 0.5 * EXPLOSION_UNIT_FORCE;
+      MIN_FRAGMENT_AREA = 0.02;
+      ASTEROID_DENSITY = DEFAULT_ASTEROID_CREATION_OPTIONS.density;
+      schema21 = {
         asteroid: Asteroid,
         position: Position,
         velocity: Velocity,
         entityDeath: EntityDeath
       };
-      nodeMeta20 = fluidInternal.registerNodeSchema(schema20, "Asteroid Death");
-      explosionIntensityScale = 0.1;
+      nodeMeta21 = fluidInternal.registerNodeSchema(schema21, "Asteroid Death");
       AsteroidDeathSystem = class extends FluidSystem {
         constructor(clientContext) {
-          super("Asteroid Death System", nodeMeta20);
+          super("Asteroid Death System", nodeMeta21);
           this.clientContext = clientContext;
+        }
+        createFragments(parentPosition, parentVelocity, parentRotation, parentAngularVelocity, parentArea) {
+          const countMin = 3;
+          const countMax = 9;
+          const count = countMin + Math.round(countMax * Math.random());
+          const angleParts = getSumRandomDistributionVector(2 * Math.PI, count);
+          const areas = getSumRandomDistributionVector(parentArea, count, 0.02);
+          const explosionForceVariance = (Math.random() - 0.5) * EXPLOSION_FORCE_VARIANCE;
+          const explosionForce = ASTEROID_AREA_EXPLOSION_FORCE_RATIO * parentArea * EXPLOSION_UNIT_FORCE + explosionForceVariance;
+          let angle = 0;
+          for (let i = 0; i < count; i++) {
+            angle += angleParts[i];
+            const area = areas[i];
+            const size = Math.sqrt(area);
+            const mass = area * ASTEROID_DENSITY;
+            const accelMag = explosionForce / Math.sqrt(mass);
+            const accelX = Math.cos(angle) * accelMag;
+            const accelY = Math.sin(angle) * accelMag;
+            createAsteroidParticle(
+              Vector2.copy(parentPosition),
+              Vector2.add(parentVelocity, { x: accelX, y: accelY }),
+              parentRotation + angle,
+              parentAngularVelocity + accelMag * Math.random(),
+              this.clientContext.engineInstance.getGameTime(),
+              5,
+              // Lifetime; currently unused to experiment with new mechanics
+              size
+            );
+          }
         }
         updateNode(node) {
           const {
@@ -4640,24 +4750,18 @@ ${error}`);
             entityDeath,
             entityId
           } = node;
-          const { area } = asteroid;
-          const count = area * 10 * 5;
-          const increment = 2 * Math.PI / count;
+          const { area: parentArea } = asteroid;
           if (entityDeath.readyToRemove) {
             fluidInternal.removeEntity(entityId);
             return;
           }
-          for (let angle = 0; angle < 2 * Math.PI; angle += increment) {
-            let vX = Math.cos(angle) * (0.5 + 0.65 * Math.random());
-            let vY = Math.sin(angle) * (0.5 + 0.65 * Math.random());
-            createAsteroidParticle(
-              Vector2.copy(position.position),
-              Vector2.add(velocity.velocity, Vector2.scale({ x: vX, y: vY }, explosionIntensityScale)),
-              position.rotation + angle,
-              velocity.angular + 1.2 * Math.PI * Math.random(),
-              this.clientContext.engineInstance.getGameTime(),
-              5,
-              Math.sqrt((0.3 + 0.7 * Math.random() / count) * asteroid.area)
+          if (parentArea > MIN_FRAGMENT_AREA) {
+            this.createFragments(
+              position.position,
+              velocity.velocity,
+              position.rotation,
+              velocity.angular,
+              parentArea
             );
           }
           entityDeath.readyToRemove = true;
@@ -4667,21 +4771,21 @@ ${error}`);
   });
 
   // src/systems/simulation/ParticleSystem.ts
-  var schema21, nodeMeta21, ParticleSystem;
+  var schema22, nodeMeta22, ParticleSystem;
   var init_ParticleSystem = __esm({
     "src/systems/simulation/ParticleSystem.ts"() {
       init_dist();
       init_internal();
       init_LifetimeComponent();
       init_ParticleComponent();
-      schema21 = {
+      schema22 = {
         particle: Particle,
         lifetime: LifeTime
       };
-      nodeMeta21 = fluidInternal.registerNodeSchema(schema21, "Particle Render System");
+      nodeMeta22 = fluidInternal.registerNodeSchema(schema22, "Particle Render System");
       ParticleSystem = class extends FluidSystem {
         constructor(clientContext) {
-          super("Particle Render System", nodeMeta21);
+          super("Particle Render System", nodeMeta22);
           this.clientContext = clientContext;
         }
         updateNode(node) {
@@ -4699,7 +4803,7 @@ ${error}`);
   });
 
   // src/systems/simulation/ProjectileDamageSystem.ts
-  var schema22, nodeMeta22, ProjectileDamageSystem;
+  var schema23, nodeMeta23, ProjectileDamageSystem;
   var init_ProjectileDamageSystem = __esm({
     "src/systems/simulation/ProjectileDamageSystem.ts"() {
       init_dist();
@@ -4711,14 +4815,15 @@ ${error}`);
       init_AsteroidComponent();
       init_PropertyAnimationComponent();
       init_SpriteComponent();
-      schema22 = {
+      init_DeathByProjectileComponent();
+      schema23 = {
         projectile: Projectile,
         collision: Collision
       };
-      nodeMeta22 = fluidInternal.registerNodeSchema(schema22, "Projectile Damage");
+      nodeMeta23 = fluidInternal.registerNodeSchema(schema23, "Projectile Damage");
       ProjectileDamageSystem = class extends FluidSystem {
         constructor() {
-          super("Projectile Damage System", nodeMeta22);
+          super("Projectile Damage System", nodeMeta23);
         }
         updateNode(node) {
           const { collision, entityId: projectileEntityId, projectile: projectileData } = node;
@@ -4739,8 +4844,10 @@ ${error}`);
             }
           }
           if (health === 0) {
-            if (!otherEntity.hasComponent(EntityDeath))
+            if (!otherEntity.hasComponent(EntityDeath)) {
               otherEntity.addComponent(EntityDeath.createComponent({ readyToRemove: false }));
+              otherEntity.addComponent(DeathByProjectile.createComponent({ projectileData }));
+            }
           }
           fluidInternal.removeEntity(projectileEntityId);
           otherEntity.removeComponent(Collision);
@@ -4750,19 +4857,19 @@ ${error}`);
   });
 
   // src/systems/simulation/animation/PropertyAnimationSystem.ts
-  var schema23, nodeMeta23, PropertyAnimationSystem;
+  var schema24, nodeMeta24, PropertyAnimationSystem;
   var init_PropertyAnimationSystem = __esm({
     "src/systems/simulation/animation/PropertyAnimationSystem.ts"() {
       init_internal();
       init_PropertyAnimationComponent();
       init_dist();
-      schema23 = {
+      schema24 = {
         propertyAnimation: PropertyAnimation
       };
-      nodeMeta23 = fluidInternal.registerNodeSchema(schema23, "Property Animation Node");
+      nodeMeta24 = fluidInternal.registerNodeSchema(schema24, "Property Animation Node");
       PropertyAnimationSystem = class extends FluidSystem {
         constructor(engineInstance, resolveInterpolator2) {
-          super("Property Animation System", nodeMeta23);
+          super("Property Animation System", nodeMeta24);
           this.engineInstance = engineInstance;
           this.resolveInterpolator = resolveInterpolator2;
         }
@@ -4796,6 +4903,7 @@ ${error}`);
 
   // src/Projectiles.ts
   function spawnProjectile({
+    source,
     position,
     velocity,
     rotation,
@@ -4832,6 +4940,7 @@ ${error}`);
     fluidInternal.addEntityComponents(
       entity,
       Projectile.createComponent({
+        source,
         deathTime,
         generation,
         damage
@@ -4877,15 +4986,6 @@ ${error}`);
       init_Utils();
       init_Sprites();
       init_Assets();
-    }
-  });
-
-  // src/components/AsteroidScoreComponent.ts
-  var AsteroidScore;
-  var init_AsteroidScoreComponent = __esm({
-    "src/components/AsteroidScoreComponent.ts"() {
-      init_dist();
-      AsteroidScore = fluidInternal.defineComponentType("AsteroidScore");
     }
   });
 
@@ -5365,7 +5465,7 @@ ${error}`);
         angular: 0
       }
     );
-    const MC_HEALTH = Health.createComponent({ maxHealth: 100, currentHealth: 60, visible: true });
+    const MC_HEALTH = Health.createComponent({ maxHealth: 100, currentHealth: 100, visible: true });
     const MC_SCORE = AsteroidScore.createComponent({ score: 0 });
     CAMERA.target.data.position = MC_POS.data;
     const cameraEntityId = fluidInternal.createEntityWithComponents(
@@ -5426,7 +5526,7 @@ ${error}`);
     );
     const systemOrchestrator = fluidInternal.core().getSystemOrchestrator();
     systemOrchestrator.pushPhases(simulationPhase, worldRenderPhase, hudRenderPhase);
-    let kinematicSystem = new KinematicSystem(clientContext), positionSystem = new PositionSystem(engine), movementControlSystem = new MovementControlSystem(() => engine.getDeltaTime()), viewportSystem = new ViewportSystem(clientContext), projectileSystem = new ProjectileSystem(engine), firingSystem = new FiringSystem(engine, spawnProjectile), cursorSystem = new CursorSystem(engine), chunkLoadingSystem = new ChunkLoadingSystem(engine, worldContext), chunkUnloadingSystem = new ChunkUnloadingSystem(engine, worldContext), chunkOccupancyUpdateSystem = new ChunkOccupancyUpdateSystem(engine, worldContext), boundingBoxUpdateSystem = new BoundingBoxUpdateSystem(), collisionDetectionSystem = new CollisionDetectionSystem(engine), pojectileDamageSystem = new ProjectileDamageSystem(), worldPreRenderSystem = new WorldPreRenderSystem(clientContext), viewportRenderSystem = new ViewportRenderSystem(renderContext), debugInfoDisplaySystem = new DebugInfoDisplaySystem(clientContext), spriteRenderSystem = new SpriteRenderSystem(renderer), boundingBoxRenderSystem = new BoundingBoxRenderSystem(clientContext), axisRenderSystem = new AxisRenderSystem(clientContext), chunkBorderRenderSystem = new ChunkBorderRenderSystem(clientContext), occupiedChunkHighlightingSystem = new OccupiedChunkHighlightingSystem(clientContext), healthBarRenderSystem = new HealthBarRenderSystem(renderContext, () => CAMERA.position.data.rotation);
+    let kinematicSystem = new KinematicSystem(clientContext), positionSystem = new PositionSystem(engine), movementControlSystem = new MovementControlSystem(() => engine.getDeltaTime()), viewportSystem = new ViewportSystem(clientContext), projectileSystem = new ProjectileSystem(engine), firingSystem = new FiringSystem(engine, spawnProjectile), cursorSystem = new CursorSystem(engine), chunkLoadingSystem = new ChunkLoadingSystem(engine, worldContext), chunkUnloadingSystem = new ChunkUnloadingSystem(engine, worldContext), chunkOccupancyUpdateSystem = new ChunkOccupancyUpdateSystem(engine, worldContext), boundingBoxUpdateSystem = new BoundingBoxUpdateSystem(), collisionDetectionSystem = new CollisionDetectionSystem(engine), pojectileDamageSystem = new ProjectileDamageSystem(), asteroidKillScoreSystem = new AsteroidKillScoreSystem(), worldPreRenderSystem = new WorldPreRenderSystem(clientContext), viewportRenderSystem = new ViewportRenderSystem(renderContext), debugInfoDisplaySystem = new DebugInfoDisplaySystem(clientContext), spriteRenderSystem = new SpriteRenderSystem(renderer), boundingBoxRenderSystem = new BoundingBoxRenderSystem(clientContext), axisRenderSystem = new AxisRenderSystem(clientContext), chunkBorderRenderSystem = new ChunkBorderRenderSystem(clientContext), occupiedChunkHighlightingSystem = new OccupiedChunkHighlightingSystem(clientContext), healthBarRenderSystem = new HealthBarRenderSystem(renderContext, () => CAMERA.position.data.rotation);
     ;
     simulationPhase.pushSystems(
       chunkLoadingSystem,
@@ -5442,6 +5542,7 @@ ${error}`);
       boundingBoxUpdateSystem,
       collisionDetectionSystem,
       pojectileDamageSystem,
+      asteroidKillScoreSystem,
       new AsteroidDeathSystem(clientContext),
       new ParticleSystem(clientContext),
       new PropertyAnimationSystem(engine, InterpolationRegistry.resolveInterpolator)
@@ -5473,7 +5574,7 @@ ${error}`);
       const width2 = height2 / shipImageAspectRatio;
       const area = width2 * height2;
       const mass = 3e9 * modelScaleFactor;
-      return fluidInternal.createEntityWithComponents(
+      const MC_ENTITY_ID = fluidInternal.createEntityWithComponents(
         MC_POS,
         MC_VEL,
         Acceleration.createComponent(
@@ -5483,16 +5584,6 @@ ${error}`);
           }
         ),
         Stats.createComponent({}),
-        ProjectileSource.createComponent({
-          muzzleSpeed: 1.2 * 2.99792458,
-          fireRate: 14,
-          projectileWidth: 0.035,
-          projectileType: artilleryShell,
-          lastFireTime: 0,
-          transform: {
-            scale: height2 * 1.1 / 2
-          }
-        }),
         RenderCenter.createComponent({ renderDistance }),
         Sprite.createComponent(
           {
@@ -5530,6 +5621,19 @@ ${error}`);
         MC_HEALTH,
         MC_SCORE
       );
+      const MC_PROJECTILE_WEAPON = ProjectileWeapon.createComponent({
+        muzzleSpeed: 1.2 * 2.99792458,
+        fireRate: 14,
+        projectileWidth: 0.035,
+        projectileType: artilleryShell,
+        lastFireTime: 0,
+        transform: {
+          scale: height2 * 1.1 / 2
+        },
+        wielder: MC_ENTITY_ID
+      });
+      fluidInternal.addEntityComponent(MC_ENTITY_ID, MC_PROJECTILE_WEAPON);
+      return MC_ENTITY_ID;
     }
     const MAIN_CHARACTER = initMainCharacter();
     const CURSOR_SCREEN_COMPONENT = ScreenPoint.createComponent({
@@ -5546,6 +5650,7 @@ ${error}`);
       init_Client();
       init_Renderer();
       init_systems();
+      init_AsteroidKillScoreSystem();
       init_OccupiedChunkHighlightingSystem();
       init_World();
       init_dist();
@@ -5574,7 +5679,7 @@ ${error}`);
       init_ResolutionComponent();
       init_BoundingBoxComponent();
       init_ChunkOccupancyComponent();
-      init_ProjectileSourceComponent();
+      init_ProjectileWeaponComponent();
       init_ViewportComponent();
       init_HealthComponent();
       init_ThrusterComponent();
