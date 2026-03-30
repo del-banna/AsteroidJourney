@@ -2,6 +2,8 @@ import { ECSComponent, Vec2 } from "fluidengine";
 import { CanvasRenderer } from "./client/renderer/Renderer";
 import { PositionComponent } from "./components/PositionComponent";
 import { VelocityComponent } from "./components/VelocityComponent";
+import { HealthComponent } from "./components/HealthComponent";
+import { AsteroidScoreComponent } from "./components/AsteroidScoreComponent";
 
 export abstract class HUDItem {
     /**
@@ -111,7 +113,9 @@ export class HUDTextItem extends HUDItem {
 export class HUD {
     public static createDefaultHUD(
         positionComponent: ECSComponent<PositionComponent>,
-        velocityComponent: ECSComponent<VelocityComponent>
+        velocityComponent: ECSComponent<VelocityComponent>,
+        healthComponent: ECSComponent<HealthComponent>,
+        asteroidScoreComponent: ECSComponent<AsteroidScoreComponent>
     ): HUD {
         return new HUD([
             new HUDTextItem(
@@ -123,6 +127,16 @@ export class HUD {
                 { x: 0.98, y: 0.88 },
                 () => `${Math.hypot(...Object.values(velocityComponent.data.velocity)).toFixed(2)} M/S`,
                 { textAlign: "right" }
+            ),
+            new HUDTextItem(
+                { x: 0, y: 0.95 },
+                () => `♡ ${Math.round(100 * healthComponent.data.currentHealth / healthComponent.data.maxHealth)}%`,
+                { textAlign: "center" }
+            ),
+            new HUDTextItem(
+                { x: -0.98, y: 0.95 },
+                () => `SCORE: ${Math.round(asteroidScoreComponent.data.score)}`,
+                { textAlign: "left" }
             )
         ]);
     }

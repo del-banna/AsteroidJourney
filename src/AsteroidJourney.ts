@@ -61,6 +61,7 @@ import { Viewport } from "./components/ViewportComponent";
 import { Health } from "./components/HealthComponent";
 import { Thruster } from "./components/ThrusterComponent";
 import { Physics } from "./components/PhysicsComponent";
+import { AsteroidScore } from "./components/AsteroidScoreComponent";
 import AssetRepo from "./Assets";
 import { drawControlGuide, drawPauseScreen } from "./Overlays";
 import { ControlBinder, registerDefaultBindings } from "./ControlBindings";
@@ -135,6 +136,10 @@ export async function start() {
             angular: 0
         });
 
+    const MC_HEALTH = Health.createComponent({ maxHealth: 100, currentHealth: 60, visible: true });
+
+    const MC_SCORE = AsteroidScore.createComponent({ score: 0 });
+
     CAMERA.target.data.position = MC_POS.data;
 
     const cameraEntityId = Fluid.createEntityWithComponents(
@@ -163,7 +168,9 @@ export async function start() {
 
     const hud = HUD.createDefaultHUD(
         MC_POS,
-        MC_VEL
+        MC_VEL,
+        MC_HEALTH,
+        MC_SCORE
     );
 
     const simulationPhase = new FluidSystemPhase(
@@ -329,7 +336,8 @@ export async function start() {
             Thruster.createComponent({ maxForce: 1.75 * 4.4e9 * modelScaleFactor }),
             MOVEMENT_CONTROL_COMPONENT,
             FIRE_CONTROL_COMPONENT,
-            Health.createComponent({ maxHealth: 100, currentHealth: 60, visible: true })
+            MC_HEALTH,
+            MC_SCORE
         );
     }
 
