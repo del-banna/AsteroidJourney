@@ -23,7 +23,7 @@ export async function loadSprites(): Promise<Sprites> {
     const shipImage = await loadImg("ship/ship1.png");
     const laserShotCanvas = renderSingleNeonLaserSprite();
     const laserShotImage = ImageUtils.canvasToImage(laserShotCanvas);
-    const artilleryShellImage = await loadImg("projectile/shell2.png");
+    const artilleryShellImage = await loadImg("projectile/shell3.png");
 
     return {
         backgroundTileImage,

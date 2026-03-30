@@ -8,7 +8,7 @@ import { ECSEntityId, ECSNode } from "fluidengine";
 import { FluidEngine, FluidSystem } from "fluidengine/internal";
 import { FireControl } from "../../components/FireControlComponent";
 import { Position } from "../../components/PositionComponent";
-import { ProjectileSource } from "../../components/ProjectileSourceComponent";
+import { ProjectileWeapon } from "../../components/ProjectileWeaponComponent";
 import { Velocity } from "../../components/VelocityComponent";
 import { Fluid } from "fluidengine";
 import { ProjectileCreationParameters } from "../../Projectiles";
@@ -17,7 +17,7 @@ import { ProjectileCreationParameters } from "../../Projectiles";
 const schema = {
     position: Position,
     velocity: Velocity,
-    projectileSource: ProjectileSource,
+    projectileWeapon: ProjectileWeapon,
     fireControl: FireControl,
 }
 type Schema = typeof schema;
@@ -34,7 +34,7 @@ export class FiringSystem extends FluidSystem<Schema> {
         const GAME_TIME = this.engineInstance.getGameTime();
         const {
             fireControl,
-            projectileSource,
+            projectileWeapon: projectileWeapon,
             position: sourcePositionComponent,
             velocity: sourceVelocityComponent
         } = node;
@@ -55,12 +55,12 @@ export class FiringSystem extends FluidSystem<Schema> {
             projectileType,
             fireRate,
             transform: sourceTransform
-        } = projectileSource;
+        } = projectileWeapon;
 
         if (!fireControl.fireIntent)
             return;
 
-        if (GAME_TIME - projectileSource.lastFireTime < 1 / fireRate)
+        if (GAME_TIME - projectileWeapon.lastFireTime < 1 / fireRate)
             return;
 
         let projectileRotation = sourceRotation;
@@ -104,7 +104,7 @@ export class FiringSystem extends FluidSystem<Schema> {
                 projectileDirectionY * muzzleSpeed
         };
 
-        const spID = this.spawnProjectile({
+        const projectileCreationParams: ProjectileCreationParameters = {
             position: projectilePosition,
             velocity: projectileVelocity,
             rotation: sourceRotation,
@@ -113,12 +113,17 @@ export class FiringSystem extends FluidSystem<Schema> {
             width: projectileWidth,
             spawnTime: GAME_TIME,
             generation: 1
-        })
+        }
+
+        if (!!projectileWeapon.wielder)
+            projectileCreationParams.source = projectileWeapon.wielder;
+
+        const spID = this.spawnProjectile(projectileCreationParams);
 
         if (!spID)
             console.warn("Failed to spawn projectile!");
 
-        projectileSource.lastFireTime = GAME_TIME;
+        projectileWeapon.lastFireTime = GAME_TIME;
     }
 }
 

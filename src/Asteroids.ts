@@ -16,6 +16,15 @@ import { Particle } from "./components/ParticleComponent";
 import Assets, { SpriteKey } from "./Assets";
 import { createSpriteEntity } from "./Sprites";
 
+export const DEFAULT_ASTEROID_CREATION_OPTIONS: Partial<AsteroidCreationOptions> = {
+    spriteImageKey: "asteroidImage",
+    density: 3.2,
+    deriveHealth: (mass: number, area: number) => mass * area,
+    damageAnimationScalePercent: 1.11,
+    damageAnimationDuration: 0.15
+};
+
+
 export interface AsteroidCreationParameters {
     position: Vec2;
     rotation: number;
@@ -123,17 +132,27 @@ export function createAsteroidParticle(
     lifeTime: number,
     size: number
 ): ECSEntityId {
-    const entityId = createSpriteEntity(
-        position,
-        rotation,
-        "asteroidImage",
-        3,
-        { x: size, y: size }
+    // const entityId = createSpriteEntity(
+    //     position,
+    //     rotation,
+    //     "asteroidImage",
+    //     3,
+    //     { x: size, y: size }
+    // );
+
+    const particleId = createAsteroid(
+        { position, rotation, velocity, angularVelocity, width: size }
     );
-    Fluid.addEntityComponents(entityId,
-        Velocity.createComponent({ velocity: velocity, angular: angularVelocity }),
-        LifeTime.createComponent({ lifeDuration: lifeTime, spawnTime }),
+    Fluid.addEntityComponents(particleId,
         Particle.createComponent({})
     )
-    return entityId;
+
+    // Fluid.addEntityComponents(entityId,
+    Velocity.createComponent({ velocity: velocity, angular: angularVelocity }),
+        LifeTime.createComponent({ lifeDuration: lifeTime, spawnTime }),
+        Particle.createComponent({})
+    // )
+    // return entityId;
+
+    return particleId;
 }

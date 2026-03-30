@@ -27,6 +27,7 @@ import {
     ViewportSystem,
     WorldPreRenderSystem
 } from "./systems";
+import { AsteroidKillScoreSystem } from "./systems/simulation/AsteroidKillScoreSystem";
 import { OccupiedChunkHighlightingSystem } from "./systems/render/debug/OccupiedChunkHighlightingSystem";
 import { generateChunk, WorldContext } from "./world/World";
 import { Fluid } from "fluidengine";
@@ -56,7 +57,7 @@ import { Position } from "./components/PositionComponent";
 import { Resolution } from "./components/ResolutionComponent";
 import { BoundingBox, createBoundingBox } from "./components/BoundingBoxComponent";
 import { ChunkOccupancy } from "./components/ChunkOccupancyComponent";
-import { ProjectileSource } from "./components/ProjectileSourceComponent";
+import { ProjectileWeapon } from "./components/ProjectileWeaponComponent";
 import { Viewport } from "./components/ViewportComponent";
 import { Health } from "./components/HealthComponent";
 import { Thruster } from "./components/ThrusterComponent";
@@ -136,7 +137,7 @@ export async function start() {
             angular: 0
         });
 
-    const MC_HEALTH = Health.createComponent({ maxHealth: 100, currentHealth: 60, visible: true });
+    const MC_HEALTH = Health.createComponent({ maxHealth: 100, currentHealth: 100, visible: true });
 
     const MC_SCORE = AsteroidScore.createComponent({ score: 0 });
 
@@ -222,6 +223,7 @@ export async function start() {
         boundingBoxUpdateSystem = new BoundingBoxUpdateSystem(),
         collisionDetectionSystem = new CollisionDetectionSystem(engine),
         pojectileDamageSystem = new ProjectileDamageSystem(),
+        asteroidKillScoreSystem = new AsteroidKillScoreSystem(),
 
         worldPreRenderSystem = new WorldPreRenderSystem(clientContext),
         viewportRenderSystem = new ViewportRenderSystem(renderContext),
@@ -248,6 +250,7 @@ export async function start() {
         boundingBoxUpdateSystem,
         collisionDetectionSystem,
         pojectileDamageSystem,
+        asteroidKillScoreSystem,
         new AsteroidDeathSystem(clientContext),
         new ParticleSystem(clientContext),
         new PropertyAnimationSystem(engine, InterpolationRegistry.resolveInterpolator),
@@ -285,7 +288,8 @@ export async function start() {
         const width = height / shipImageAspectRatio;
         const area = width * height;
         const mass = 3e9 * modelScaleFactor;
-        return Fluid.createEntityWithComponents(
+
+        const MC_ENTITY_ID = Fluid.createEntityWithComponents(
             MC_POS,
             MC_VEL,
             Acceleration.createComponent(
@@ -294,16 +298,6 @@ export async function start() {
                     angular: 0
                 }),
             Stats.createComponent({}),
-            ProjectileSource.createComponent({
-                muzzleSpeed: 1.2 * 2.99792458,
-                fireRate: 14,
-                projectileWidth: 0.035,
-                projectileType: artilleryShell,
-                lastFireTime: 0,
-                transform: {
-                    scale: height * 1.1 / 2
-                }
-            }),
             RenderCenter.createComponent({ renderDistance: renderDistance }),
             Sprite.createComponent(
                 {
@@ -339,9 +333,26 @@ export async function start() {
             MC_HEALTH,
             MC_SCORE
         );
+        const MC_PROJECTILE_WEAPON = ProjectileWeapon.createComponent({
+            muzzleSpeed: 1.2 * 2.99792458,
+            fireRate: 14,
+            projectileWidth: 0.035,
+            projectileType: artilleryShell,
+            lastFireTime: 0,
+            transform: {
+                scale: height * 1.1 / 2
+            },
+            wielder: MC_ENTITY_ID
+        });
+
+        Fluid.addEntityComponent(MC_ENTITY_ID, MC_PROJECTILE_WEAPON);
+
+        return MC_ENTITY_ID;
+
     }
 
     const MAIN_CHARACTER = initMainCharacter();
+
 
     const CURSOR_SCREEN_COMPONENT = ScreenPoint.createComponent({
         point: { x: 0, y: 0 }

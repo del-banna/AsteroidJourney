@@ -4,10 +4,11 @@
     Copyright (c) 2025 Del Elbanna
 */
 
-import { Fluid } from "fluidengine";
+import { ECSEntityId, Fluid } from "fluidengine";
 
 
-export interface ProjectileComponent {
+export default interface ProjectileComponent {
+    source?: ECSEntityId;
     generation: number;
     deathTime: number;
     damage: number;

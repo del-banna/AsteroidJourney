@@ -4,12 +4,13 @@
     Copyright (c) 2025 Del Elbanna
 */
 
-import { Fluid } from "fluidengine";
+import { ECSEntityId, Fluid } from "fluidengine";
 import { Transform } from "fluidengine";
 import { ProjectileType } from "../Projectiles";
 
 
-export interface ProjectileSourceComponent {
+export interface ProjectileWeaponComponent {
+    wielder?: ECSEntityId;
     transform?: Transform;
     muzzleSpeed: number;
     fireRate: number;
@@ -18,4 +19,4 @@ export interface ProjectileSourceComponent {
     projectileType: ProjectileType;
 }
 
-export const ProjectileSource = Fluid.defineComponentType<ProjectileSourceComponent>("Projectile Source");
+export const ProjectileWeapon = Fluid.defineComponentType<ProjectileWeaponComponent>("Projectile Source");

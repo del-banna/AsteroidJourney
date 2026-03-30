@@ -13,6 +13,7 @@ import Assets, { SpriteKey } from "./Assets";
 
 
 export interface ProjectileCreationParameters {
+    source?: ECSEntityId;
     position: Vec2;
     velocity: Vec2;
     rotation: number;
@@ -37,6 +38,7 @@ export interface ProjectileType {
 
 export function spawnProjectile(
     {
+        source,
         position,
         velocity,
         rotation,
@@ -76,6 +78,7 @@ export function spawnProjectile(
     );
     Fluid.addEntityComponents(entity,
         Projectile.createComponent({
+            source,
             deathTime: deathTime,
             generation: generation,
             damage
