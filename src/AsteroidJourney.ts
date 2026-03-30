@@ -56,7 +56,7 @@ import { Position } from "./components/PositionComponent";
 import { Resolution } from "./components/ResolutionComponent";
 import { BoundingBox, createBoundingBox } from "./components/BoundingBoxComponent";
 import { ChunkOccupancy } from "./components/ChunkOccupancyComponent";
-import { ProjectileSource } from "./components/ProjectileSourceComponent";
+import { ProjectileWeapon } from "./components/ProjectileWeaponComponent";
 import { Viewport } from "./components/ViewportComponent";
 import { Health } from "./components/HealthComponent";
 import { Thruster } from "./components/ThrusterComponent";
@@ -294,7 +294,7 @@ export async function start() {
                     angular: 0
                 }),
             Stats.createComponent({}),
-            ProjectileSource.createComponent({
+            ProjectileWeapon.createComponent({
                 muzzleSpeed: 1.2 * 2.99792458,
                 fireRate: 14,
                 projectileWidth: 0.035,
