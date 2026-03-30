@@ -4,16 +4,30 @@
     Copyright (c) 2025 Del Elbanna
 */
 
-import { Fluid } from "fluidengine";
+import { Fluid, Vec2 } from "fluidengine";
 import { ECSNode } from "fluidengine";
 import { FluidSystem } from "fluidengine/internal";
 import { Vector2 } from "fluidengine";
 import { ClientContext } from "../../client/Client";
 import { Asteroid } from "../../components/AsteroidComponent";
 import { EntityDeath } from "../../components/EntityDeathComponent";
-import { Position } from "../../components/PositionComponent";
+import { Position, PositionComponent } from "../../components/PositionComponent";
 import { Velocity } from "../../components/VelocityComponent";
-import { createAsteroidParticle } from "../../Asteroids";
+import { createAsteroidParticle, DEFAULT_ASTEROID_CREATION_OPTIONS } from "../../Asteroids";
+
+/** 
+ * CONSTANTS
+ */
+
+const EXPLOSION_UNIT_FORCE = 0.08;
+const ASTEROID_AREA_EXPLOSION_FORCE_RATIO = 10; // per unit area
+const EXPLOSION_FORCE_VARIANCE = 0.5 * EXPLOSION_UNIT_FORCE;
+const MIN_FRAGMENT_AREA = 0.02
+const ASTEROID_DENSITY = DEFAULT_ASTEROID_CREATION_OPTIONS.density!;
+
+// 
+// 
+// 
 
 const schema = {
     asteroid: Asteroid,
@@ -24,7 +38,49 @@ const schema = {
 
 type Schema = typeof schema;
 const nodeMeta = Fluid.registerNodeSchema(schema, "Asteroid Death");
-const explosionIntensityScale = 0.1;
+
+function generateRandomUnitVector(componentCount: number, min = 0): number[] {
+    let sumOfSquares = 0;
+    const vector = Array.from({ length: componentCount }, () => {
+        const random = min + (1 - min) * Math.random();
+        sumOfSquares += random ** 2;
+        return random;
+    });
+
+    const magnitude = Math.sqrt(sumOfSquares);
+
+    if (magnitude === 0) {
+        return new Array(componentCount).fill(0);
+    }
+
+    return vector.map((component) => component / magnitude);
+}
+
+function getSumRandomDistributionVector(sum: number, componentCount: number, minRandom: number = 0): number[] {
+    /* 
+    Pseudo-code explanation:
+        Let S be the 'sum' parameter value;
+        We want sum(v_i) = S
+
+        We can take advantage of vector properties;
+        |v| = sqrt(sum(v_i^2))
+        |v|^2 = sum(v_i^2)
+
+        Let k = |v|^2 = S
+        Then |v| = sqrt(k) = sqrt(S)
+        Then using a random unit vector, we simply scale it;
+        Let r be a random unit vector, and u be its scaled counterpart;
+        u = r * sqrt(S)
+        The vector u has magnitude sqrt(S);
+        sqrt(sum(u_i^2)) = sqrt(S)
+
+        So the sum of the squared components of u is equal to S
+        sum(u_i^2) = S
+    */
+    const magnitude = Math.sqrt(sum);
+    const randomUnitVector = generateRandomUnitVector(componentCount, minRandom);
+    return randomUnitVector.map(component => (component * magnitude) ** 2);
+}
 
 export class AsteroidDeathSystem extends FluidSystem<Schema> {
     constructor(
@@ -32,6 +88,47 @@ export class AsteroidDeathSystem extends FluidSystem<Schema> {
 
     ) {
         super("Asteroid Death System", nodeMeta);
+    }
+
+    createFragments(
+        parentPosition: Vec2,
+        parentVelocity: Vec2,
+        parentRotation: number,
+        parentAngularVelocity: number,
+        parentArea: number
+    ) {
+        const countMin = 3;
+        const countMax = 9;
+        const count = countMin + Math.round(countMax * Math.random());
+
+        const angleParts = getSumRandomDistributionVector(2 * Math.PI, count);
+        const areas = getSumRandomDistributionVector(parentArea, count, 0.02);
+
+        const explosionForceVariance = (Math.random() - 0.5) * EXPLOSION_FORCE_VARIANCE;
+        const explosionForce = ASTEROID_AREA_EXPLOSION_FORCE_RATIO * parentArea * EXPLOSION_UNIT_FORCE + explosionForceVariance;
+
+        let angle = 0;
+        for (let i = 0; i < count; i++) {
+            angle += angleParts[i];
+
+            const area = areas[i];
+            const size = Math.sqrt(area);
+
+            const mass = area * ASTEROID_DENSITY;
+
+            const accelMag = explosionForce / Math.sqrt(mass);
+            const accelX = Math.cos(angle) * accelMag;
+            const accelY = Math.sin(angle) * accelMag;
+            createAsteroidParticle(
+                Vector2.copy(parentPosition),
+                Vector2.add(parentVelocity, { x: accelX, y: accelY }),
+                parentRotation + angle,
+                parentAngularVelocity + accelMag * Math.random(),
+                this.clientContext.engineInstance.getGameTime(),
+                5, // Lifetime; currently unused to experiment with new mechanics
+                size
+            );
+        }
     }
 
     updateNode(node: ECSNode<Schema>): void {
@@ -42,32 +139,23 @@ export class AsteroidDeathSystem extends FluidSystem<Schema> {
             entityDeath,
             entityId
         } = node;
-        const { area } = asteroid;
-        const count = area * 10 * 5;
-        const increment = 2 * Math.PI / count;
+        const { area: parentArea } = asteroid;
+
         if (entityDeath.readyToRemove) {
             Fluid.removeEntity(entityId);
             return;
         }
 
-        if (area <= 0.01) {
-            entityDeath.readyToRemove = true;
-            return;
-        }
-
-        for (let angle = 0; angle < 2 * Math.PI; angle += increment) {
-            let vX = Math.cos(angle) * (0.5 + 0.65 * Math.random());
-            let vY = Math.sin(angle) * (0.5 + 0.65 * Math.random());
-            createAsteroidParticle(
-                Vector2.copy(position.position),
-                Vector2.add(velocity.velocity, Vector2.scale({ x: vX, y: vY }, explosionIntensityScale)),
-                position.rotation + angle,
-                velocity.angular + 1.2 * Math.PI * Math.random(),
-                this.clientContext.engineInstance.getGameTime(),
-                5,
-                Math.sqrt((0.3 + 0.7 * Math.random() / count) * asteroid.area)
+        if (parentArea > MIN_FRAGMENT_AREA) {
+            this.createFragments(
+                position.position,
+                velocity.velocity,
+                position.rotation,
+                velocity.angular,
+                parentArea
             );
         }
+
         entityDeath.readyToRemove = true;
     }
 }

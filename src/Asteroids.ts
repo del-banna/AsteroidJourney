@@ -16,6 +16,15 @@ import { Particle } from "./components/ParticleComponent";
 import Assets, { SpriteKey } from "./Assets";
 import { createSpriteEntity } from "./Sprites";
 
+export const DEFAULT_ASTEROID_CREATION_OPTIONS: Partial<AsteroidCreationOptions> = {
+    spriteImageKey: "asteroidImage",
+    density: 3.2,
+    deriveHealth: (mass: number, area: number) => mass * area,
+    damageAnimationScalePercent: 1.11,
+    damageAnimationDuration: 0.15
+};
+
+
 export interface AsteroidCreationParameters {
     position: Vec2;
     rotation: number;
