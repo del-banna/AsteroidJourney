@@ -38,6 +38,7 @@ export interface ProjectileType {
 
 export function spawnProjectile(
     {
+        source,
         position,
         velocity,
         rotation,
@@ -77,6 +78,7 @@ export function spawnProjectile(
     );
     Fluid.addEntityComponents(entity,
         Projectile.createComponent({
+            source,
             deathTime: deathTime,
             generation: generation,
             damage

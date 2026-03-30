@@ -7,7 +7,7 @@
 import { ECSEntityId, Fluid } from "fluidengine";
 
 
-export interface ProjectileComponent {
+export default interface ProjectileComponent {
     source?: ECSEntityId;
     generation: number;
     deathTime: number;

@@ -27,6 +27,7 @@ import {
     ViewportSystem,
     WorldPreRenderSystem
 } from "./systems";
+import { AsteroidKillScoreSystem } from "./systems/simulation/AsteroidKillScoreSystem";
 import { OccupiedChunkHighlightingSystem } from "./systems/render/debug/OccupiedChunkHighlightingSystem";
 import { generateChunk, WorldContext } from "./world/World";
 import { Fluid } from "fluidengine";
@@ -136,7 +137,7 @@ export async function start() {
             angular: 0
         });
 
-    const MC_HEALTH = Health.createComponent({ maxHealth: 100, currentHealth: 60, visible: true });
+    const MC_HEALTH = Health.createComponent({ maxHealth: 100, currentHealth: 100, visible: true });
 
     const MC_SCORE = AsteroidScore.createComponent({ score: 0 });
 
@@ -222,6 +223,7 @@ export async function start() {
         boundingBoxUpdateSystem = new BoundingBoxUpdateSystem(),
         collisionDetectionSystem = new CollisionDetectionSystem(engine),
         pojectileDamageSystem = new ProjectileDamageSystem(),
+        asteroidKillScoreSystem = new AsteroidKillScoreSystem(),
 
         worldPreRenderSystem = new WorldPreRenderSystem(clientContext),
         viewportRenderSystem = new ViewportRenderSystem(renderContext),
@@ -248,6 +250,7 @@ export async function start() {
         boundingBoxUpdateSystem,
         collisionDetectionSystem,
         pojectileDamageSystem,
+        asteroidKillScoreSystem,
         new AsteroidDeathSystem(clientContext),
         new ParticleSystem(clientContext),
         new PropertyAnimationSystem(engine, InterpolationRegistry.resolveInterpolator),

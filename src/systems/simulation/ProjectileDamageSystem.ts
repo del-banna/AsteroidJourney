@@ -14,6 +14,7 @@ import { Projectile } from "../../components/ProjectileComponent";
 import { Asteroid } from "../../components/AsteroidComponent";
 import { PropertyAnimation } from "../../components/PropertyAnimationComponent";
 import { Sprite } from "../../components/SpriteComponent";
+import { DeathByProjectile } from "../../components/DeathByProjectileComponent";
 
 const schema = {
     projectile: Projectile,
@@ -53,8 +54,10 @@ export class ProjectileDamageSystem extends FluidSystem<Schema> {
         }
 
         if (health === 0)
-            if (!otherEntity.hasComponent(EntityDeath))
+            if (!otherEntity.hasComponent(EntityDeath)) {
                 otherEntity.addComponent(EntityDeath.createComponent({ readyToRemove: false }));
+                otherEntity.addComponent(DeathByProjectile.createComponent({ projectileData: projectileData }))
+            }
 
         Fluid.removeEntity(projectileEntityId);
         otherEntity.removeComponent(Collision);
