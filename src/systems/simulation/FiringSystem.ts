@@ -104,7 +104,7 @@ export class FiringSystem extends FluidSystem<Schema> {
                 projectileDirectionY * muzzleSpeed
         };
 
-        const spID = this.spawnProjectile({
+        const projectileCreationParams: ProjectileCreationParameters = {
             position: projectilePosition,
             velocity: projectileVelocity,
             rotation: sourceRotation,
@@ -113,7 +113,12 @@ export class FiringSystem extends FluidSystem<Schema> {
             width: projectileWidth,
             spawnTime: GAME_TIME,
             generation: 1
-        })
+        }
+
+        if (!!projectileWeapon.wielder)
+            projectileCreationParams.source = projectileWeapon.wielder;
+
+        const spID = this.spawnProjectile(projectileCreationParams);
 
         if (!spID)
             console.warn("Failed to spawn projectile!");

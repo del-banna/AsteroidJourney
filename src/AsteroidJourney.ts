@@ -285,7 +285,8 @@ export async function start() {
         const width = height / shipImageAspectRatio;
         const area = width * height;
         const mass = 3e9 * modelScaleFactor;
-        return Fluid.createEntityWithComponents(
+
+        const MC_ENTITY_ID = Fluid.createEntityWithComponents(
             MC_POS,
             MC_VEL,
             Acceleration.createComponent(
@@ -294,16 +295,6 @@ export async function start() {
                     angular: 0
                 }),
             Stats.createComponent({}),
-            ProjectileWeapon.createComponent({
-                muzzleSpeed: 1.2 * 2.99792458,
-                fireRate: 14,
-                projectileWidth: 0.035,
-                projectileType: artilleryShell,
-                lastFireTime: 0,
-                transform: {
-                    scale: height * 1.1 / 2
-                }
-            }),
             RenderCenter.createComponent({ renderDistance: renderDistance }),
             Sprite.createComponent(
                 {
@@ -339,9 +330,26 @@ export async function start() {
             MC_HEALTH,
             MC_SCORE
         );
+        const MC_PROJECTILE_WEAPON = ProjectileWeapon.createComponent({
+            muzzleSpeed: 1.2 * 2.99792458,
+            fireRate: 14,
+            projectileWidth: 0.035,
+            projectileType: artilleryShell,
+            lastFireTime: 0,
+            transform: {
+                scale: height * 1.1 / 2
+            },
+            wielder: MC_ENTITY_ID
+        });
+
+        Fluid.addEntityComponent(MC_ENTITY_ID, MC_PROJECTILE_WEAPON);
+
+        return MC_ENTITY_ID;
+
     }
 
     const MAIN_CHARACTER = initMainCharacter();
+
 
     const CURSOR_SCREEN_COMPONENT = ScreenPoint.createComponent({
         point: { x: 0, y: 0 }

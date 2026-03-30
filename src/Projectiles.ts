@@ -13,6 +13,7 @@ import Assets, { SpriteKey } from "./Assets";
 
 
 export interface ProjectileCreationParameters {
+    source?: ECSEntityId;
     position: Vec2;
     velocity: Vec2;
     rotation: number;
