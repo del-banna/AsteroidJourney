@@ -4880,6 +4880,15 @@ ${error}`);
     }
   });
 
+  // src/components/AsteroidScoreComponent.ts
+  var AsteroidScore;
+  var init_AsteroidScoreComponent = __esm({
+    "src/components/AsteroidScoreComponent.ts"() {
+      init_dist();
+      AsteroidScore = fluidInternal.defineComponentType("AsteroidScore");
+    }
+  });
+
   // src/Overlays.ts
   function drawPauseScreen(renderContext, renderer) {
     renderContext.save();
@@ -5166,6 +5175,132 @@ ${error}`);
     }
   });
 
+  // src/HUD.ts
+  var HUDItem, defaultHUDTextItemOptions, HUDTextItem, HUD;
+  var init_HUD = __esm({
+    "src/HUD.ts"() {
+      HUDItem = class {
+        /**
+         * 
+         * @param normalizedScreenPosition A pair of values, each between -1 and 1, indicating the position on the screen relative to the center along either axis respectively.
+         */
+        constructor(normalizedScreenPosition = { x: 0, y: 0 }) {
+          this.normalizedScreenPosition = normalizedScreenPosition;
+          this.setNormalizedScreenPosition(normalizedScreenPosition);
+        }
+        static clipNormalizedScreenPosition(normalizedScreenPosition) {
+          return {
+            x: Math.max(-1, Math.min(1, normalizedScreenPosition.x)),
+            y: Math.max(-1, Math.min(1, normalizedScreenPosition.y))
+          };
+        }
+        setNormalizedScreenPosition(normalizedScreenPosition) {
+          this.normalizedScreenPosition = HUDTextItem.clipNormalizedScreenPosition(normalizedScreenPosition);
+        }
+        getNormalizedScreenPosition() {
+          return this.normalizedScreenPosition;
+        }
+        getScreenPosition(renderer) {
+          const width2 = renderer.getWidth();
+          const height2 = renderer.getHeight();
+          return {
+            x: (this.normalizedScreenPosition.x + 1) * width2 / 2,
+            y: (this.normalizedScreenPosition.y + 1) * height2 / 2
+          };
+        }
+      };
+      defaultHUDTextItemOptions = {
+        font: "28px DigitalFont",
+        color: "#288bed",
+        textAlign: "left",
+        textBaseline: "middle",
+        opacity: 0.75
+      };
+      HUDTextItem = class extends HUDItem {
+        /**
+         * 
+         * @param normalizedScreenPosition A pair of values, each between -1 and 1, indicating the position on the screen relative to the center along either axis respectively.
+         * @param resolveValue 
+         * @param font 
+         * @param color 
+         */
+        constructor(normalizedScreenPosition = { x: 0, y: 0 }, resolveValue = () => "", options = defaultHUDTextItemOptions) {
+          super(normalizedScreenPosition);
+          this.resolveValue = resolveValue;
+          this.options = options;
+          this.options = { ...defaultHUDTextItemOptions, ...options };
+        }
+        render(renderer) {
+          const ctx = renderer.renderContext;
+          const text = String(this.resolveValue());
+          const position = this.getScreenPosition(renderer);
+          const { font, color: color2, textAlign, textBaseline, opacity } = this.options;
+          ctx.save();
+          if (font)
+            ctx.font = font;
+          if (color2)
+            ctx.fillStyle = color2;
+          if (opacity !== void 0)
+            ctx.globalAlpha = opacity;
+          if (textAlign)
+            ctx.textAlign = textAlign;
+          if (textBaseline)
+            ctx.textBaseline = textBaseline;
+          if (this.options.renderCallback) {
+            this.options.renderCallback(renderer, this);
+          }
+          ctx.fillText(text, position.x, position.y);
+          ctx.fillStyle = "red";
+          ctx.fillText(".", position.x, position.y);
+          ctx.restore();
+        }
+      };
+      HUD = class _HUD {
+        constructor(items = []) {
+          this.items = items;
+        }
+        static createDefaultHUD(positionComponent, velocityComponent, healthComponent, asteroidScoreComponent) {
+          return new _HUD([
+            new HUDTextItem(
+              { x: 0.98, y: 0.95 },
+              () => `${positionComponent.data.rotation.toFixed(2)} RAD`,
+              { textAlign: "right" }
+            ),
+            new HUDTextItem(
+              { x: 0.98, y: 0.88 },
+              () => `${Math.hypot(...Object.values(velocityComponent.data.velocity)).toFixed(2)} M/S`,
+              { textAlign: "right" }
+            ),
+            new HUDTextItem(
+              { x: 0, y: 0.95 },
+              () => `\u2661 ${Math.round(100 * healthComponent.data.currentHealth / healthComponent.data.maxHealth)}%`,
+              { textAlign: "center" }
+            ),
+            new HUDTextItem(
+              { x: -0.98, y: 0.95 },
+              () => `SCORE: ${Math.round(asteroidScoreComponent.data.score)}`,
+              { textAlign: "left" }
+            )
+          ]);
+        }
+        addItem(item) {
+          this.items.push(item);
+        }
+        removeItem(item) {
+          const index = this.items.indexOf(item);
+          if (index !== -1) {
+            this.items.splice(index, 1);
+          }
+        }
+        render(renderer) {
+          for (const item of this.items) {
+            item.render(renderer);
+          }
+        }
+      };
+    }
+  });
+
   // src/AsteroidJourney.ts
   var AsteroidJourney_exports = {};
   __export(AsteroidJourney_exports, {
@@ -5195,14 +5330,18 @@ ${error}`);
         }
       }
     );
+    const PPM = 1024;
+    const engine = new FluidEngine(fluidInternal.core(), PPM);
+    const worldContext = new WorldContext(engine, 1.024, 0.1, (wC, cI, cS) => generateChunk(wC, cI, cS, engine));
+    const clientContext = new ClientContext(engine, worldContext, renderer);
+    const controlBinder = new ControlBinder().registerDefaultListeners();
+    clientContext.setZoomLevel(20);
+    let viewportPosition = { x: -renderer.getWidth() / (2 * PPM), y: -renderer.getHeight() / (2 * PPM) };
     let renderDistance = 5;
     const CAMERA = {
       position: Position.createComponent({
-        position: {
-          x: 0,
-          y: 0
-        },
-        rotation: 0
+        position: viewportPosition,
+        rotation: -Math.PI / 2
       }),
       target: TargetPosition.createComponent({
         position: Position.createComponent({ position: Vector2.zero(), rotation: 0 }).data
@@ -5216,13 +5355,22 @@ ${error}`);
       viewport: Viewport.createComponent({}),
       resolution: VIEWPORT_RESOLUTION_COMPONENT
     };
+    const MC_POS = Position.createComponent({
+      position: { x: 0, y: 0 },
+      rotation: -Math.PI / 2
+    });
+    const MC_VEL = Velocity.createComponent(
+      {
+        velocity: { x: 0, y: 0 },
+        angular: 0
+      }
+    );
+    const MC_HEALTH = Health.createComponent({ maxHealth: 100, currentHealth: 60, visible: true });
+    const MC_SCORE = AsteroidScore.createComponent({ score: 0 });
+    CAMERA.target.data.position = MC_POS.data;
     const cameraEntityId = fluidInternal.createEntityWithComponents(
       ...Object.values(CAMERA)
     );
-    const engine = new FluidEngine(fluidInternal.core(), 1024);
-    const worldContext = new WorldContext(engine, 1.024, 0.1, (wC, cI, cS) => generateChunk(wC, cI, cS, engine));
-    const clientContext = new ClientContext(engine, worldContext, renderer);
-    clientContext.setZoomLevel(20);
     const MOVEMENT_CONTROL_COMPONENT = MovementControl.createComponent({
       accelerationInput: {
         x: 0,
@@ -5231,13 +5379,18 @@ ${error}`);
       yawInput: 0
     });
     const FIRE_CONTROL_COMPONENT = FireControl.createComponent({ fireIntent: false });
-    const controlBinder = new ControlBinder().registerDefaultListeners();
     registerDefaultBindings(
       controlBinder,
       engine,
       clientContext,
       MOVEMENT_CONTROL_COMPONENT,
       FIRE_CONTROL_COMPONENT
+    );
+    const hud = HUD.createDefaultHUD(
+      MC_POS,
+      MC_VEL,
+      MC_HEALTH,
+      MC_SCORE
     );
     const simulationPhase = new FluidSystemPhase(
       "Simulation Phase",
@@ -5264,14 +5417,15 @@ ${error}`);
       () => {
       },
       () => {
+        hud.render(renderer);
         if (!engine.getAnimationState()) {
           drawPauseScreen(renderContext, renderer);
           drawControlGuide(controlBinder, renderContext, renderer);
         }
       }
     );
-    const sysman = fluidInternal.core().getSystemOrchestrator();
-    sysman.pushPhases(simulationPhase, worldRenderPhase, hudRenderPhase);
+    const systemOrchestrator = fluidInternal.core().getSystemOrchestrator();
+    systemOrchestrator.pushPhases(simulationPhase, worldRenderPhase, hudRenderPhase);
     let kinematicSystem = new KinematicSystem(clientContext), positionSystem = new PositionSystem(engine), movementControlSystem = new MovementControlSystem(() => engine.getDeltaTime()), viewportSystem = new ViewportSystem(clientContext), projectileSystem = new ProjectileSystem(engine), firingSystem = new FiringSystem(engine, spawnProjectile), cursorSystem = new CursorSystem(engine), chunkLoadingSystem = new ChunkLoadingSystem(engine, worldContext), chunkUnloadingSystem = new ChunkUnloadingSystem(engine, worldContext), chunkOccupancyUpdateSystem = new ChunkOccupancyUpdateSystem(engine, worldContext), boundingBoxUpdateSystem = new BoundingBoxUpdateSystem(), collisionDetectionSystem = new CollisionDetectionSystem(engine), pojectileDamageSystem = new ProjectileDamageSystem(), worldPreRenderSystem = new WorldPreRenderSystem(clientContext), viewportRenderSystem = new ViewportRenderSystem(renderContext), debugInfoDisplaySystem = new DebugInfoDisplaySystem(clientContext), spriteRenderSystem = new SpriteRenderSystem(renderer), boundingBoxRenderSystem = new BoundingBoxRenderSystem(clientContext), axisRenderSystem = new AxisRenderSystem(clientContext), chunkBorderRenderSystem = new ChunkBorderRenderSystem(clientContext), occupiedChunkHighlightingSystem = new OccupiedChunkHighlightingSystem(clientContext), healthBarRenderSystem = new HealthBarRenderSystem(renderContext, () => CAMERA.position.data.rotation);
     ;
     simulationPhase.pushSystems(
@@ -5305,11 +5459,6 @@ ${error}`);
       viewportRenderSystem,
       debugInfoDisplaySystem
     );
-    const MC_POS = Position.createComponent({
-      position: { x: 0, y: 0 },
-      rotation: -Math.PI / 2
-    });
-    CAMERA.target.data.position = MC_POS.data;
     const artilleryShell = {
       lifeTime: 5,
       damage: 15e-4,
@@ -5326,12 +5475,7 @@ ${error}`);
       const mass = 3e9 * modelScaleFactor;
       return fluidInternal.createEntityWithComponents(
         MC_POS,
-        Velocity.createComponent(
-          {
-            velocity: { x: 0, y: 0 },
-            angular: 0
-          }
-        ),
+        MC_VEL,
         Acceleration.createComponent(
           {
             acceleration: { x: 0, y: 0 },
@@ -5383,7 +5527,8 @@ ${error}`);
         Thruster.createComponent({ maxForce: 1.75 * 44e8 * modelScaleFactor }),
         MOVEMENT_CONTROL_COMPONENT,
         FIRE_CONTROL_COMPONENT,
-        Health.createComponent({ maxHealth: 100, currentHealth: 60, visible: true })
+        MC_HEALTH,
+        MC_SCORE
       );
     }
     const MAIN_CHARACTER = initMainCharacter();
@@ -5434,9 +5579,11 @@ ${error}`);
       init_HealthComponent();
       init_ThrusterComponent();
       init_PhysicsComponent();
+      init_AsteroidScoreComponent();
       init_Assets();
       init_Overlays();
       init_ControlBindings();
+      init_HUD();
     }
   });
 
