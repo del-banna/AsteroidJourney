@@ -5044,33 +5044,33 @@ ${error}`);
         },
         continuous: true
       }),
-      down: createControlBinding({
-        name: "Move Down",
-        keys: ["s"],
-        action: () => {
-          movementControlComponent.data.accelerationInput.y += -1;
-        },
-        continuous: true
-      }),
-      left: createControlBinding({
-        name: "Move Left",
-        keys: ["a"],
-        action: () => {
-          movementControlComponent.data.accelerationInput.x += -1;
-        },
-        continuous: true
-      }),
-      right: createControlBinding({
-        name: "Move Right",
-        keys: ["d"],
-        action: () => {
-          movementControlComponent.data.accelerationInput.x += 1;
-        },
-        continuous: true
-      }),
+      // down: createControlBinding({
+      //     name: "Move Down",
+      //     keys: ["s"],
+      //     action: () => {
+      //         movementControlComponent.data.accelerationInput.y += -1;
+      //     },
+      //     continuous: true
+      // }),
+      // left: createControlBinding({
+      //     name: "Move Left",
+      //     keys: ["a"],
+      //     action: () => {
+      //         movementControlComponent.data.accelerationInput.x += -1;
+      //     },
+      //     continuous: true
+      // }),
+      // right: createControlBinding({
+      //     name: "Move Right",
+      //     keys: ["d"],
+      //     action: () => {
+      //         movementControlComponent.data.accelerationInput.x += 1;
+      //     },
+      //     continuous: true
+      // }),
       yawLeft: createControlBinding({
         name: "Yaw Left",
-        keys: ["q"],
+        keys: ["a"],
         action: () => {
           movementControlComponent.data.yawInput -= 1;
         },
@@ -5078,7 +5078,7 @@ ${error}`);
       }),
       yawRight: createControlBinding({
         name: "Yaw Right",
-        keys: ["e"],
+        keys: ["d"],
         action: () => {
           movementControlComponent.data.yawInput += 1;
         },
@@ -5102,7 +5102,7 @@ ${error}`);
         }
       }),
       eagle_eye_zoom: createControlBinding({
-        name: "Eagle Eye Zoom",
+        name: "Far Zoom",
         keys: ["v"],
         action: () => clientContext.setZoomLevel(5)
       }),
@@ -5131,6 +5131,22 @@ ${error}`);
           const min = increment;
           const next = clientContext.getZoomLevel() + increment;
           clientContext.setZoomLevel(next > max ? min : next);
+        }
+      }),
+      focus: createControlBinding({
+        name: "Focus",
+        keys: ["shift"],
+        onTrigger: (self) => {
+          const oZ = clientContext.getZoomLevel();
+          const oTS = clientContext.getSimulationSpeed();
+          self.metadata.originalZoom = oZ;
+          self.metadata.originalTimeScale = oTS;
+          clientContext.setZoomLevel(oZ * 2.25);
+          clientContext.setSimulationSpeed(oTS * 0.5);
+        },
+        onRelease: (self) => {
+          clientContext.setZoomLevel(self.metadata.originalZoom);
+          clientContext.setSimulationSpeed(self.metadata.originalTimeScale);
         }
       }),
       slow_time: createControlBinding({
@@ -5189,51 +5205,92 @@ ${error}`);
   var init_ControlBindings = __esm({
     "src/ControlBindings.ts"() {
       ControlBinding = class {
-        constructor(controlBindingProperties = {
+        name;
+        description;
+        keys;
+        onTrigger;
+        action;
+        onRelease;
+        continuous;
+        enabled;
+        active;
+        sustained;
+        metadata = {};
+        constructor(props = {
           keys: [],
           action: () => {
           }
         }) {
-          this.controlBindingProperties = controlBindingProperties;
-          this.name = controlBindingProperties.name || "Unnamed Control Binding";
-          this.description = controlBindingProperties.description || "";
-          this.action = controlBindingProperties.action || (() => {
+          this.name = props.name || "Unnamed Control Binding";
+          this.description = props.description || "";
+          this.onTrigger = props.onTrigger || (() => {
           });
-          this.continuous = controlBindingProperties.continuous || false;
-          this.enabled = controlBindingProperties.enabled !== void 0 ? controlBindingProperties.enabled : true;
-          const keys = controlBindingProperties.keys || [];
+          this.action = props.action || (() => {
+          });
+          this.onRelease = props.onRelease || (() => {
+          });
+          this.continuous = props.continuous || false;
+          this.enabled = props.enabled !== void 0 ? props.enabled : true;
+          this.active = false;
+          this.sustained = false;
+          const keys = props.keys || [];
           this.keys = keys.map((k) => k.toLowerCase());
         }
-        name;
-        description;
-        keys;
-        action;
-        continuous;
-        enabled;
       };
-      ControlBinder = class {
-        bindings = [];
+      ControlBinder = class _ControlBinder {
+        discreetBindings = [];
+        continuousBindings = [];
         keyStates = /* @__PURE__ */ new Map();
         constructor() {
         }
-        activateControlBindings(continuous) {
-          for (const binding of this.bindings.filter((b) => b.continuous === continuous)) {
+        static processBindings(bindings, keyStates) {
+          for (const binding of bindings) {
             if (!binding.enabled) continue;
-            if (binding.keys.some((k) => this.keyStates.get(k))) {
-              binding.action();
+            const triggered = binding.keys.some((k) => keyStates.get(k));
+            if (!triggered) {
+              binding.active = false;
+              binding.sustained = false;
+              continue;
             }
+            if (!binding.active) {
+              binding.active = true;
+              binding.sustained = false;
+              binding.onTrigger(binding);
+            } else {
+              binding.sustained = true;
+            }
+            binding.action(binding);
           }
+        }
+        processDiscreetBindings() {
+          _ControlBinder.processBindings(this.discreetBindings, this.keyStates);
           return this;
         }
+        processContinuousBindings() {
+          _ControlBinder.processBindings(this.continuousBindings, this.keyStates);
+          return this;
+        }
+        onKeyDeactivation(key) {
+          key = key.toLowerCase();
+          for (const binding of this.getBindings()) {
+            const isRelevant = binding.keys.some((k) => k === key);
+            const isTriggered = binding.keys.some((k) => this.keyStates.get(k));
+            if (!binding.enabled || !isRelevant || isTriggered)
+              continue;
+            binding.onRelease(binding);
+            binding.active = false;
+            binding.sustained = false;
+          }
+        }
         registerBinding(binding) {
-          this.bindings.push(binding);
+          (binding.continuous ? this.continuousBindings : this.discreetBindings).push(binding);
           return this;
         }
         getBindings() {
-          return this.bindings;
+          return [...this.discreetBindings, ...this.continuousBindings];
         }
         getActiveBindings() {
-          return this.bindings.filter((b) => b.enabled && b.keys.some((k) => this.keyStates.get(k)));
+          return this.getBindings().filter((b) => b.enabled && b.keys.some((k) => this.keyStates.get(k)));
         }
         setKeyState(key, pressed) {
           this.keyStates.set(key, pressed);
@@ -5245,24 +5302,31 @@ ${error}`);
           this.keyStates.clear();
           return this;
         }
+        registerKeyActivation(key) {
+          this.setKeyState(key.toLowerCase(), true);
+          this.processDiscreetBindings();
+        }
+        registerKeyDeactivation(key) {
+          key = key.toLowerCase();
+          this.setKeyState(key, false);
+          this.onKeyDeactivation(key);
+        }
         registerKeyboardListeners(element = window.document.body) {
           element.addEventListener("keydown", (event) => {
             event.preventDefault();
-            this.setKeyState(event.key.toLowerCase(), true);
-            this.activateControlBindings(false);
+            this.registerKeyActivation(event.key);
           });
           element.addEventListener("keyup", (event) => {
-            this.setKeyState(event.key.toLowerCase(), false);
+            this.registerKeyDeactivation(event.key);
           });
           return this;
         }
         registerMouseListeners(element = window.document.body) {
           element.addEventListener("mousedown", (event) => {
-            this.setKeyState(mouseButtonToString(event.button), true);
-            this.activateControlBindings(false);
+            this.registerKeyActivation(mouseButtonToString(event.button));
           });
           element.addEventListener("mouseup", (event) => {
-            this.setKeyState(mouseButtonToString(event.button), false);
+            this.registerKeyDeactivation(mouseButtonToString(event.button));
           });
           return this;
         }
@@ -5498,7 +5562,7 @@ ${error}`);
     const simulationPhase = new FluidSystemPhase(
       "Simulation Phase",
       () => {
-        controlBinder.activateControlBindings(true);
+        controlBinder.processContinuousBindings();
       },
       () => {
         MOVEMENT_CONTROL_COMPONENT.data.yawInput = 0;
