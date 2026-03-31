@@ -5350,8 +5350,6 @@ ${error}`);
             this.options.renderCallback(renderer, this);
           }
           ctx.fillText(text, position.x, position.y);
-          ctx.fillStyle = "red";
-          ctx.fillText(".", position.x, position.y);
           ctx.restore();
         }
       };
@@ -5362,24 +5360,29 @@ ${error}`);
         static createDefaultHUD(positionComponent, velocityComponent, healthComponent, asteroidScoreComponent) {
           return new _HUD([
             new HUDTextItem(
-              { x: 0.98, y: 0.95 },
-              () => `${positionComponent.data.rotation.toFixed(2)} RAD`,
-              { textAlign: "right" }
+              { x: 0, y: -0.7 },
+              () => `\u2316`,
+              { textAlign: "center", font: "48px DigitalFont" }
             ),
             new HUDTextItem(
-              { x: 0.98, y: 0.88 },
+              { x: 0.09, y: 0 },
+              () => `${positionComponent.data.rotation.toFixed(2)} RAD`,
+              { textAlign: "left" }
+            ),
+            new HUDTextItem(
+              { x: -0.09, y: 0 },
               () => `${Math.hypot(...Object.values(velocityComponent.data.velocity)).toFixed(2)} M/S`,
               { textAlign: "right" }
             ),
             new HUDTextItem(
-              { x: 0, y: 0.95 },
+              { x: 0, y: 0.22 },
               () => `\u2661 ${Math.round(100 * healthComponent.data.currentHealth / healthComponent.data.maxHealth)}%`,
               { textAlign: "center" }
             ),
             new HUDTextItem(
-              { x: -0.98, y: 0.95 },
+              { x: 0, y: 0.35 },
               () => `SCORE: ${Math.round(asteroidScoreComponent.data.score)}`,
-              { textAlign: "left" }
+              { textAlign: "center" }
             )
           ]);
         }
