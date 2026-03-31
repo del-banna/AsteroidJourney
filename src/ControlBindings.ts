@@ -16,11 +16,17 @@ export function createControlBinding(
     return new ControlBinding(controlBindingProperties);
 }
 
+export interface ControlBindingAction {
+    (self: ControlBinding): void;
+}
+
 export interface ControlBindingProperties {
     keys: string[];
     name?: string;
     description?: string;
-    action?: () => void;
+    onTrigger?: ControlBindingAction;
+    action?: ControlBindingAction;
+    onRelease?: ControlBindingAction;
     continuous?: boolean;
     enabled?: boolean;
 }
@@ -29,54 +35,106 @@ export class ControlBinding {
     public name: string;
     public description: string;
     public keys: string[];
-    public action: () => void;
+    public onTrigger: ControlBindingAction;
+    public action: ControlBindingAction;
+    public onRelease: ControlBindingAction;
     public continuous: boolean;
     public enabled: boolean;
+    public active: boolean;
+    public sustained: boolean;
+    public metadata: Record<string, any> = {};
 
     constructor(
-        private controlBindingProperties: ControlBindingProperties = {
+        props: ControlBindingProperties = {
             keys: [],
             action: () => { }
         }) {
-        this.name = controlBindingProperties.name || "Unnamed Control Binding";
-        this.description = controlBindingProperties.description || "";
-        this.action = controlBindingProperties.action || (() => { });
-        this.continuous = controlBindingProperties.continuous || false;
-        this.enabled = controlBindingProperties.enabled !== undefined ? controlBindingProperties.enabled : true;
+        this.name = props.name || "Unnamed Control Binding";
+        this.description = props.description || "";
+        this.onTrigger = props.onTrigger || (() => { });
+        this.action = props.action || (() => { });
+        this.onRelease = props.onRelease || (() => { });
+        this.continuous = props.continuous || false;
+        this.enabled = props.enabled !== undefined ? props.enabled : true;
 
-        const keys = controlBindingProperties.keys || [];
+        this.active = false;
+        this.sustained = false;
+
+        const keys = props.keys || [];
         this.keys = keys.map(k => k.toLowerCase());
     }
 }
 
+export type KeyStateMap = Map<string, boolean>;
+
 export class ControlBinder {
-    private bindings: ControlBinding[] = [];
-    private keyStates: Map<string, boolean> = new Map();
+    private discreetBindings: ControlBinding[] = [];
+    private continuousBindings: ControlBinding[] = [];
+    private keyStates: KeyStateMap = new Map();
 
     constructor() {
     }
 
-    activateControlBindings(continuous: boolean): ControlBinder {
-        for (const binding of this.bindings.filter(b => b.continuous === continuous)) {
+    static processBindings(bindings: ControlBinding[], keyStates: KeyStateMap): void {
+        for (const binding of bindings) {
             if (!binding.enabled) continue;
-            if (binding.keys.some(k => this.keyStates.get(k))) {
-                binding.action();
+
+            const triggered = binding.keys.some(k => keyStates.get(k));
+
+            if (!triggered) {
+                binding.active = false;
+                binding.sustained = false;
+                continue
             }
+
+            if (!binding.active) {
+                binding.active = true;
+                binding.sustained = false;
+                binding.onTrigger(binding);
+            } else {
+                binding.sustained = true;
+            }
+
+            binding.action(binding);
         }
+    }
+
+    processDiscreetBindings(): ControlBinder {
+        ControlBinder.processBindings(this.discreetBindings, this.keyStates);
         return this;
     }
 
+    processContinuousBindings(): ControlBinder {
+        ControlBinder.processBindings(this.continuousBindings, this.keyStates);
+        return this;
+    }
+
+    onKeyDeactivation(key: string) {
+        key = key.toLowerCase();
+        for (const binding of this.getBindings()) {
+            const isRelevant = binding.keys.some(k => k === key);
+            const isTriggered = binding.keys.some(k => this.keyStates.get(k));
+            if (!binding.enabled || !isRelevant || isTriggered)
+                continue;
+
+            binding.onRelease(binding);
+
+            binding.active = false;
+            binding.sustained = false;
+        }
+    }
+
     registerBinding(binding: ControlBinding): ControlBinder {
-        this.bindings.push(binding);
+        (binding.continuous ? this.continuousBindings : this.discreetBindings).push(binding);
         return this;
     }
 
     getBindings(): ControlBinding[] {
-        return this.bindings;
+        return [...this.discreetBindings, ...this.continuousBindings];
     }
 
     getActiveBindings(): ControlBinding[] {
-        return this.bindings.filter(b => b.enabled && b.keys.some(k => this.keyStates.get(k)));
+        return this.getBindings().filter(b => b.enabled && b.keys.some(k => this.keyStates.get(k)));
     }
 
     setKeyState(key: string, pressed: boolean): void {
@@ -92,27 +150,36 @@ export class ControlBinder {
         return this;
     }
 
+    registerKeyActivation(key: string) {
+        this.setKeyState(key.toLowerCase(), true);
+        this.processDiscreetBindings();
+    }
+
+    registerKeyDeactivation(key: string) {
+        key = key.toLowerCase();
+        this.setKeyState(key, false);
+        this.onKeyDeactivation(key);
+    }
+
     registerKeyboardListeners(element: HTMLElement = window.document.body): ControlBinder {
         element.addEventListener("keydown", (event) => {
             event.preventDefault();
-            this.setKeyState(event.key.toLowerCase(), true);
-            this.activateControlBindings(false);
+            this.registerKeyActivation(event.key);
         });
 
         element.addEventListener("keyup", (event) => {
-            this.setKeyState(event.key.toLowerCase(), false);
+            this.registerKeyDeactivation(event.key);
         });
         return this;
     }
 
     registerMouseListeners(element: HTMLElement = window.document.body): ControlBinder {
         element.addEventListener("mousedown", (event: MouseEvent) => {
-            this.setKeyState(mouseButtonToString(event.button), true);
-            this.activateControlBindings(false);
+            this.registerKeyActivation(mouseButtonToString(event.button));
         });
 
         element.addEventListener("mouseup", (event: MouseEvent) => {
-            this.setKeyState(mouseButtonToString(event.button), false);
+            this.registerKeyDeactivation(mouseButtonToString(event.button));
         });
         return this;
     }
@@ -140,33 +207,33 @@ export function createDefaultControlBindings(
             },
             continuous: true
         }),
-        down: createControlBinding({
-            name: "Move Down",
-            keys: ["s"],
-            action: () => {
-                movementControlComponent.data.accelerationInput.y += -1;
-            },
-            continuous: true
-        }),
-        left: createControlBinding({
-            name: "Move Left",
-            keys: ["a"],
-            action: () => {
-                movementControlComponent.data.accelerationInput.x += -1;
-            },
-            continuous: true
-        }),
-        right: createControlBinding({
-            name: "Move Right",
-            keys: ["d"],
-            action: () => {
-                movementControlComponent.data.accelerationInput.x += 1;
-            },
-            continuous: true
-        }),
+        // down: createControlBinding({
+        //     name: "Move Down",
+        //     keys: ["s"],
+        //     action: () => {
+        //         movementControlComponent.data.accelerationInput.y += -1;
+        //     },
+        //     continuous: true
+        // }),
+        // left: createControlBinding({
+        //     name: "Move Left",
+        //     keys: ["a"],
+        //     action: () => {
+        //         movementControlComponent.data.accelerationInput.x += -1;
+        //     },
+        //     continuous: true
+        // }),
+        // right: createControlBinding({
+        //     name: "Move Right",
+        //     keys: ["d"],
+        //     action: () => {
+        //         movementControlComponent.data.accelerationInput.x += 1;
+        //     },
+        //     continuous: true
+        // }),
         yawLeft: createControlBinding({
             name: "Yaw Left",
-            keys: ["q"],
+            keys: ["a"],
             action: () => {
                 movementControlComponent.data.yawInput -= 1;
             },
@@ -174,7 +241,7 @@ export function createDefaultControlBindings(
         }),
         yawRight: createControlBinding({
             name: "Yaw Right",
-            keys: ["e"],
+            keys: ["d"],
             action: () => {
                 movementControlComponent.data.yawInput += 1;
             },
@@ -198,7 +265,7 @@ export function createDefaultControlBindings(
             }
         }),
         eagle_eye_zoom: createControlBinding({
-            name: "Eagle Eye Zoom",
+            name: "Far Zoom",
             keys: ["v"],
             action: () => clientContext.setZoomLevel(5)
         }),
@@ -227,6 +294,22 @@ export function createDefaultControlBindings(
                 const min = increment;
                 const next = (clientContext.getZoomLevel() + increment);
                 clientContext.setZoomLevel(next > max ? min : next);
+            }
+        }),
+        focus: createControlBinding({
+            name: "Focus",
+            keys: ["shift"],
+            onTrigger: (self) => {
+                const oZ = clientContext.getZoomLevel();
+                const oTS = clientContext.getSimulationSpeed();
+                self.metadata.originalZoom = oZ;
+                self.metadata.originalTimeScale = oTS;
+                clientContext.setZoomLevel(oZ * 2.25);
+                clientContext.setSimulationSpeed(oTS * 0.5);
+            },
+            onRelease: (self) => {
+                clientContext.setZoomLevel(self.metadata.originalZoom);
+                clientContext.setSimulationSpeed(self.metadata.originalTimeScale);
             }
         }),
         slow_time: createControlBinding({
