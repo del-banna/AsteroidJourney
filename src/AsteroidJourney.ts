@@ -177,7 +177,7 @@ export async function start() {
     const simulationPhase = new FluidSystemPhase(
         "Simulation Phase",
         () => {
-            controlBinder.activateControlBindings(true);
+            controlBinder.processContinuousBindings();
         },
         () => {
             MOVEMENT_CONTROL_COMPONENT.data.yawInput = 0;
