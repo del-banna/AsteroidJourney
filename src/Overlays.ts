@@ -15,6 +15,9 @@ export function drawPauseScreen(
     renderContext.fillStyle = "white";
     renderContext.fillText("⏸", (renderer.getWidth() - 256) / 2, renderer.getHeight() / 2);
 
+    renderContext.font = "bold 48px calibri"
+    renderContext.fillText("Press 'Escape' or click to start", (renderer.getWidth() - 48 * 12) / 2, renderer.getHeight() * 0.65);
+
     renderContext.restore();
 }
 

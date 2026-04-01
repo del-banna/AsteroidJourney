@@ -103,6 +103,11 @@ export async function start() {
     const clientContext: ClientContext = new ClientContext(engine, worldContext, renderer);
     const controlBinder = new ControlBinder().registerDefaultListeners();
 
+    canvasElement.onclick = () => {
+        if (!engine.getAnimationState())
+            engine.toggleAnimation();
+    };
+
     clientContext.setZoomLevel(20);
     let viewportPosition = { x: -renderer.getWidth() / (2 * PPM), y: -renderer.getHeight() / (2 * PPM) }
     let renderDistance: number = 5;
