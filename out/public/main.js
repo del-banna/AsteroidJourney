@@ -4998,6 +4998,8 @@ ${error}`);
     renderContext.font = "bold 256px calibri";
     renderContext.fillStyle = "white";
     renderContext.fillText("\u23F8", (renderer.getWidth() - 256) / 2, renderer.getHeight() / 2);
+    renderContext.font = "bold 48px calibri";
+    renderContext.fillText("Press 'Escape' or click to start", (renderer.getWidth() - 48 * 12) / 2, renderer.getHeight() * 0.65);
     renderContext.restore();
   }
   function drawControlGuide(controlBinder, renderContext, renderer) {
@@ -5007,13 +5009,20 @@ ${error}`);
     renderContext.fillStyle = "white";
     renderContext.textAlign = "left";
     const bindings = controlBinder.getBindings().filter((b) => b.name && b.keys.length > 0 && b.enabled);
+    const groups = /* @__PURE__ */ new Map();
+    bindings.forEach((b) => {
+      if (!groups.get(b.group))
+        groups.set(b.group, []);
+      else
+        groups.get(b.group).push(b);
+    });
     const keysString = (keys) => `[ ${keys.map((k) => `'${k.toUpperCase()}'`).join(" / ")} ]`;
-    const textLines = bindings.map(
+    const lines = bindings.map(
       (b) => `${keysString(b.keys)}				 ${b.name}${b.continuous ? " (hold)" : ""}${b.description ? ` :${b.description}` : ""}
 `
     );
-    const textPairing = textLines.map((line) => [line, "white"]);
-    drawComplexText(renderContext, 10, 20, textPairing, 4);
+    const pairings = lines.map((line) => [line, "white"]);
+    drawComplexText(renderContext, 10, 20, pairings, 4);
     renderContext.restore();
   }
   var init_Overlays = __esm({
@@ -5038,6 +5047,7 @@ ${error}`);
       // Movement controls
       up: createControlBinding({
         name: "Move Up",
+        group: "Movement",
         keys: ["w"],
         action: () => {
           movementControlComponent.data.accelerationInput.y += 1;
@@ -5070,6 +5080,7 @@ ${error}`);
       // }),
       yawLeft: createControlBinding({
         name: "Yaw Left",
+        group: "Movement",
         keys: ["a"],
         action: () => {
           movementControlComponent.data.yawInput -= 1;
@@ -5078,6 +5089,7 @@ ${error}`);
       }),
       yawRight: createControlBinding({
         name: "Yaw Right",
+        group: "Movement",
         keys: ["d"],
         action: () => {
           movementControlComponent.data.yawInput += 1;
@@ -5087,6 +5099,7 @@ ${error}`);
       // Fire control
       fire_keyboard: createControlBinding({
         name: "Fire",
+        group: "Other Controls",
         keys: [" ", mouseButtonToString(0)],
         action: () => {
           fireControlComponent.data.fireIntent = true;
@@ -5103,16 +5116,19 @@ ${error}`);
       }),
       eagle_eye_zoom: createControlBinding({
         name: "Far Zoom",
+        group: "Zoom",
         keys: ["v"],
         action: () => clientContext.setZoomLevel(5)
       }),
       reset_zoom: createControlBinding({
         name: "Reset Zoom",
+        group: "Zoom",
         keys: ["x"],
         action: () => clientContext.setZoomLevel(30)
       }),
       decrease_zoom: createControlBinding({
         name: "Decrease Zoom",
+        group: "Zoom",
         keys: ["z"],
         action: () => {
           const decrement = 10;
@@ -5124,6 +5140,7 @@ ${error}`);
       }),
       increase_zoom: createControlBinding({
         name: "Increase Zoom",
+        group: "Zoom",
         keys: ["c"],
         action: () => {
           const increment = 10;
@@ -5135,6 +5152,7 @@ ${error}`);
       }),
       focus: createControlBinding({
         name: "Focus",
+        group: "Other Controls",
         keys: ["shift"],
         onTrigger: (self) => {
           const oZ = clientContext.getZoomLevel();
@@ -5151,21 +5169,25 @@ ${error}`);
       }),
       slow_time: createControlBinding({
         name: "Slow Time",
+        group: "Simulation Speed",
         keys: ["["],
         action: () => clientContext.setSimulationSpeed(clientContext.getSimulationSpeed() / 2)
       }),
       speed_time: createControlBinding({
         name: "Speed Time",
+        group: "Simulation Speed",
         keys: ["]"],
         action: () => clientContext.setSimulationSpeed(clientContext.getSimulationSpeed() * 2)
       }),
       reset_simulation_speed: createControlBinding({
         name: "Reset Simulation Speed",
+        group: "Simulation Speed",
         keys: ["-"],
         action: () => clientContext.setSimulationSpeed(1)
       }),
       toggle_debug_info: createControlBinding({
         name: "Toggle Debug Info",
+        group: "Dev & Debug",
         keys: ["f1"],
         action: () => {
           clientContext.displayDebugInfo = !clientContext.displayDebugInfo;
@@ -5173,6 +5195,7 @@ ${error}`);
       }),
       toggle_colliders: createControlBinding({
         name: "Toggle Colliders",
+        group: "Dev & Debug",
         keys: ["f2"],
         action: () => {
           clientContext.displayBoundingBoxes = !clientContext.displayBoundingBoxes;
@@ -5180,6 +5203,7 @@ ${error}`);
       }),
       toggle_display_axes: createControlBinding({
         name: "Toggle Display Axes",
+        group: "Dev & Debug",
         keys: ["f3"],
         action: () => {
           clientContext.displayEntityAxes = !clientContext.displayEntityAxes;
@@ -5187,6 +5211,7 @@ ${error}`);
       }),
       toggle_display_chunks: createControlBinding({
         name: "Toggle Display Chunks",
+        group: "Dev & Debug",
         keys: ["f4"],
         action: () => {
           clientContext.displayChunks = !clientContext.displayChunks;
@@ -5215,6 +5240,7 @@ ${error}`);
         enabled;
         active;
         sustained;
+        group;
         metadata = {};
         constructor(props = {
           keys: [],
@@ -5222,6 +5248,7 @@ ${error}`);
           }
         }) {
           this.name = props.name || "Unnamed Control Binding";
+          this.group = props.group || "Other Controls";
           this.description = props.description || "";
           this.onTrigger = props.onTrigger || (() => {
           });
@@ -5502,6 +5529,10 @@ ${error}`);
     const worldContext = new WorldContext(engine, 1.024, 0.1, (wC, cI, cS) => generateChunk(wC, cI, cS, engine));
     const clientContext = new ClientContext(engine, worldContext, renderer);
     const controlBinder = new ControlBinder().registerDefaultListeners();
+    canvasElement.onclick = () => {
+      if (!engine.getAnimationState())
+        engine.toggleAnimation();
+    };
     clientContext.setZoomLevel(20);
     let viewportPosition = { x: -renderer.getWidth() / (2 * PPM), y: -renderer.getHeight() / (2 * PPM) };
     let renderDistance = 5;
