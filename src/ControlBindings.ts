@@ -10,7 +10,7 @@ export function mouseButtonToString(button: number): string {
 export function createControlBinding(
     controlBindingProperties: ControlBindingProperties = {
         keys: [],
-        action: () => { }
+        action: () => { },
     }
 ): ControlBinding {
     return new ControlBinding(controlBindingProperties);
@@ -29,6 +29,7 @@ export interface ControlBindingProperties {
     onRelease?: ControlBindingAction;
     continuous?: boolean;
     enabled?: boolean;
+    group?: string;
 }
 
 export class ControlBinding {
@@ -42,6 +43,7 @@ export class ControlBinding {
     public enabled: boolean;
     public active: boolean;
     public sustained: boolean;
+    public group: string;
     public metadata: Record<string, any> = {};
 
     constructor(
@@ -50,6 +52,7 @@ export class ControlBinding {
             action: () => { }
         }) {
         this.name = props.name || "Unnamed Control Binding";
+        this.group = props.group || "Other Controls";
         this.description = props.description || "";
         this.onTrigger = props.onTrigger || (() => { });
         this.action = props.action || (() => { });
@@ -201,6 +204,7 @@ export function createDefaultControlBindings(
         // Movement controls
         up: createControlBinding({
             name: "Move Up",
+            group: "Movement",
             keys: ["w"],
             action: () => {
                 movementControlComponent.data.accelerationInput.y += 1;
@@ -233,6 +237,7 @@ export function createDefaultControlBindings(
         // }),
         yawLeft: createControlBinding({
             name: "Yaw Left",
+            group: "Movement",
             keys: ["a"],
             action: () => {
                 movementControlComponent.data.yawInput -= 1;
@@ -241,6 +246,7 @@ export function createDefaultControlBindings(
         }),
         yawRight: createControlBinding({
             name: "Yaw Right",
+            group: "Movement",
             keys: ["d"],
             action: () => {
                 movementControlComponent.data.yawInput += 1;
@@ -250,6 +256,7 @@ export function createDefaultControlBindings(
         // Fire control
         fire_keyboard: createControlBinding({
             name: "Fire",
+            group: "Other Controls",
             keys: [" ", mouseButtonToString(0)],
             action: () => {
                 fireControlComponent.data.fireIntent = true;
@@ -266,16 +273,19 @@ export function createDefaultControlBindings(
         }),
         eagle_eye_zoom: createControlBinding({
             name: "Far Zoom",
+            group: "Zoom",
             keys: ["v"],
             action: () => clientContext.setZoomLevel(5)
         }),
         reset_zoom: createControlBinding({
             name: "Reset Zoom",
+            group: "Zoom",
             keys: ["x"],
             action: () => clientContext.setZoomLevel(30)
         }),
         decrease_zoom: createControlBinding({
             name: "Decrease Zoom",
+            group: "Zoom",
             keys: ["z"],
             action: () => {
                 const decrement = 10;
@@ -287,6 +297,7 @@ export function createDefaultControlBindings(
         }),
         increase_zoom: createControlBinding({
             name: "Increase Zoom",
+            group: "Zoom",
             keys: ["c"],
             action: () => {
                 const increment = 10;
@@ -298,6 +309,7 @@ export function createDefaultControlBindings(
         }),
         focus: createControlBinding({
             name: "Focus",
+            group: "Other Controls",
             keys: ["shift"],
             onTrigger: (self) => {
                 const oZ = clientContext.getZoomLevel();
@@ -314,21 +326,25 @@ export function createDefaultControlBindings(
         }),
         slow_time: createControlBinding({
             name: "Slow Time",
+            group: "Simulation Speed",
             keys: ["["],
             action: () => clientContext.setSimulationSpeed(clientContext.getSimulationSpeed() / 2)
         }),
         speed_time: createControlBinding({
             name: "Speed Time",
+            group: "Simulation Speed",
             keys: ["]"],
             action: () => clientContext.setSimulationSpeed(clientContext.getSimulationSpeed() * 2)
         }),
         reset_simulation_speed: createControlBinding({
             name: "Reset Simulation Speed",
+            group: "Simulation Speed",
             keys: ["-"],
             action: () => clientContext.setSimulationSpeed(1)
         }),
         toggle_debug_info: createControlBinding({
             name: "Toggle Debug Info",
+            group: "Dev & Debug",
             keys: ["f1"],
             action: () => {
                 clientContext.displayDebugInfo = !clientContext.displayDebugInfo;
@@ -336,6 +352,7 @@ export function createDefaultControlBindings(
         }),
         toggle_colliders: createControlBinding({
             name: "Toggle Colliders",
+            group: "Dev & Debug",
             keys: ["f2"],
             action: () => {
                 clientContext.displayBoundingBoxes = !clientContext.displayBoundingBoxes;
@@ -343,6 +360,7 @@ export function createDefaultControlBindings(
         }),
         toggle_display_axes: createControlBinding({
             name: "Toggle Display Axes",
+            group: "Dev & Debug",
             keys: ["f3"],
             action: () => {
                 clientContext.displayEntityAxes = !clientContext.displayEntityAxes;
@@ -350,6 +368,7 @@ export function createDefaultControlBindings(
         }),
         toggle_display_chunks: createControlBinding({
             name: "Toggle Display Chunks",
+            group: "Dev & Debug",
             keys: ["f4"],
             action: () => {
                 clientContext.displayChunks = !clientContext.displayChunks;

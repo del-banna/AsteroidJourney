@@ -1,5 +1,5 @@
 import { CanvasRenderer } from "./client/renderer/Renderer";
-import { ControlBinder } from "./ControlBindings";
+import { ControlBinder, ControlBinding } from "./ControlBindings";
 import { drawComplexText } from "./Utils";
 
 export function drawPauseScreen(
@@ -34,14 +34,23 @@ export function drawControlGuide(
     renderContext.textAlign = "left";
 
     const bindings = controlBinder.getBindings().filter(b => b.name && b.keys.length > 0 && b.enabled);
+    const groups: Map<string, ControlBinding[]> = new Map();
+    bindings.forEach(b => {
+        if (!groups.get(b.group))
+            groups.set(b.group, []);
+        else
+            groups.get(b.group).push(b);
+    });
+
     const keysString = (keys: string[]) => `[ ${keys.map(k => `'${k.toUpperCase()}'`).join(" / ")} ]`;
-    const textLines = bindings.map(b =>
+
+    const lines = bindings.map(b =>
         `${keysString(b.keys)}\t\t\t\t ${b.name}${b.continuous ? " (hold)" : ""}${b.description ? ` :${b.description}` : ""}\n`
     );
 
-    const textPairing = textLines.map(line => [line, "white"] as [string, string]);
+    const pairings = lines.map(line => [line, "white"] as [string, string]);
 
-    drawComplexText(renderContext, 10, 20, textPairing, 4);
+    drawComplexText(renderContext, 10, 20, pairings, 4);
 
 
     renderContext.restore();
